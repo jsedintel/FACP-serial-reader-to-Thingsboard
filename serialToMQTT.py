@@ -41,7 +41,7 @@ def parse_serial_data(data):
 
         for meta in time_date_metadata[2:]:
             key, value = meta.split(':')
-            metadata = metadata + key.strip()+ ": " + value.strip()
+            metadata = metadata + key.strip()+ ": " + value.strip() + " | "
 
         if len(lines) > 1:
             metadata = metadata + 'Additional_Metadata: ' + lines[1].strip()
