@@ -70,11 +70,6 @@ Evento enviado al tópico FACP/Eventos/ClientePrueba1234:
   "ID_Panel": "Edwards-IO1000-001",
   "ID_Evento": "MON RST",
   "Fecha": "13:01:58 10/20/2023",
-  "Metadata": {
-    "E": "042"
-    “Aditional_metadata: {
-      “Reinicio” 
-    }
-  }
+  "Metadata": "E: 042 | Aditional_metadata: Reinicio"
 }
 
