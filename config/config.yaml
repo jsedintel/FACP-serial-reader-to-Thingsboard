@@ -1,13 +1,13 @@
 #Componentes respectivos a MQTT
 mqtt:
-  usuario: Test1234 
-  contrasena: Test1234 
-  url: c4e2607e9758412696b75708d95794bb.s1.eu.hivemq.cloud 
-  puerto: 8883
+  usuario: usuario
+  contrasena: contrasena
+  url: url
+  puerto: 0000
 #Componentes respectivos a serial
 serial:
   #Puerto correspondiente en el que se conectará el USB
-  puerto: "/tmp/virtual-serial"
+  puerto: "direccion/del/puerto"
   #De aqui en adelante es probable que no se deban modificar, a menos de que los intruyan a hacerlo
   baudrate: 9600
   bytesize: 8
@@ -17,6 +17,6 @@ serial:
   timeout: 1
 #Componentes respectivos a la informacion del cliente y del dispositivo
 cliente:
-  id_cliente: ClientePrueba1234
+  id_cliente: Test
   id_facp: '001'
   modelo_panel: Edward's iO1000
