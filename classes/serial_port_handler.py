@@ -39,7 +39,7 @@ class SerialPortHandler:
                 self.ser.open()
             message = OrderedDict([
                 ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-                ("ID_Panel", self.config["cliente"]["id_facp"]),
+                ("ID_Panel", self.config["cliente"]["id_panel"]),
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
                 ("Mensaje", "Conectado"),
                 ("Tipo", "Estado")
