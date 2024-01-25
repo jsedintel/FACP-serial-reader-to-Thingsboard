@@ -19,12 +19,13 @@ class MqttHandler:
             self.client.tls_set()
             lwt_message = json.dumps(OrderedDict([
                 ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-                ("ID_Panel", self.config["cliente"]["id_facp"]),
+                ("ID_Panel", self.config["cliente"]["id_panel"]),
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+                ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
                 ("Mensaje", "Desconectado"),
                 ("Tipo", "Estado")
             ]))
-            self.client.will_set(self.config["cliente"]["id_cliente"]+"/FACP/"+self.config["cliente"]["id_facp"]+"/Estado", 
+            self.client.will_set(self.config["cliente"]["id_cliente"]+"/FACP/"+str(self.config["cliente"]["id_panel"])+"/Estado", 
                                 payload=lwt_message, qos=2, retain=True)
             try:
                 self.client.connect(self.config["mqtt"]["url"], self.config["mqtt"]["puerto"])
@@ -42,8 +43,9 @@ class MqttHandler:
         try:
             message = json.dumps(OrderedDict([
                 ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-                ("ID_Panel", self.config["cliente"]["id_facp"]),
+                ("ID_Panel", self.config["cliente"]["id_panel"]),
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+                ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
                 ("Mensaje", "Conectado"),
                 ("Tipo", "Estado")
             ]))
@@ -57,7 +59,7 @@ class MqttHandler:
             raise ConnectionError(f"Un error inesperado ha ocurrido al intentar crear el mensaje de estado 'Conectado' {e}")
 
     def publish(self, message: str, pub_type: PublishType) -> None:
-        base_topic = f"{self.config['cliente']['id_cliente']}/FACP/{self.config['cliente']['id_facp']}"
+        base_topic = f"{self.config['cliente']['id_cliente']}/FACP/{str(self.config['cliente']['id_panel'])}"
         try:
             match pub_type:
                 case PublishType.EVENTO:
@@ -106,5 +108,5 @@ class MqttHandler:
                     time.sleep(1)
             except Exception as e:
                 time.sleep(5)
-                self.logger.error("Error inesperado ocurrido. Intentando conectar al broker MQTT de nuevo")
+                self.logger.exception("Error inesperado ocurrido. Intentando conectar al broker MQTT de nuevo")
             

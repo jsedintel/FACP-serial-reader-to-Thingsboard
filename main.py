@@ -7,7 +7,7 @@ import pickle
 import logging
 import time
 from classes.logging_config import setup_logging
-from classes.specific_serial_handler import SpecificSerialHandler
+from classes.specific_serial_handler import *
 from classes.mqtt_sender import MqttHandler
 from classes.utils import SafeQueue
 import platform
@@ -27,6 +27,12 @@ def is_platform_windows():
 
 def is_platform_linux():
     return platform.system() == "Linux"
+
+def close_program():
+    if is_platform_windows():
+        os._exit(1)
+    if is_platform_linux():
+        os.kill(os.getpid(), signal.SIGINT)
 
 def save_queue_to_file(queue: SafeQueue, file_path: str) -> None:
     with queue.mutex:
@@ -74,7 +80,7 @@ def verify_config(config: dict) -> dict:
     required_structure = {
         "mqtt": {"usuario", "contrasena", "url", "puerto"},
         "serial": {"puerto", "baudrate", "bytesize", "parity", "stopbits", "xonxoff", "timeout"},
-        "cliente": {"id_cliente", "id_facp", "modelo_panel"}
+        "cliente": {"id_cliente", "id_panel", "modelo_panel", "id_modelo_panel"}
     }
 
     missing_keys = {}
@@ -94,10 +100,17 @@ def verify_config(config: dict) -> dict:
 
 def verify_eventSeverityLevels(eventSeverityLevels: dict) -> dict:
     incorrect_entries = {}
-    for key, value in eventSeverityLevels.items():
-        # Chequea si la severidad esta entre 0 y 2
-        if not isinstance(value, int) or not 0 <= value <= 2:
-            incorrect_entries[key] = value
+    try:
+        for FACP, events in eventSeverityLevels.items():
+            if not isinstance(FACP, int):
+                raise KeyError("Codigo del panel invalido")
+            for event_id, severity_level in events.items():
+                # Chequea si la severidad esta entre 0 y 2
+                if not isinstance(severity_level, int) or not 0 <= severity_level <= 2:
+                    incorrect_entries[event_id] = severity_level
+    except Exception as e:
+        incorrect_entries['Error en el formato del archivo'] = -1
+        return incorrect_entries
     return incorrect_entries
 
 def main():
@@ -118,7 +131,15 @@ def main():
     momevents_queue = load_queue_from_file("queue.picke", logger)
 
     mqtt_handler = MqttHandler(config, momevents_queue)
-    serial_handler = SpecificSerialHandler(config, eventSeverityLevels, momevents_queue)
+    serial_handler = None
+
+    #Acá se implementa cada FACP que se implementa para setearlo
+    match config['cliente']['id_modelo_panel']:
+        case 10001: #Edwards iO1000
+            serial_handler = Edwards_iO1000(config, eventSeverityLevels, momevents_queue)
+        case _:
+            logger.error("El modelo de panel especificado no fue encontrado. Verifica el nombre ingresado y si el fACP está soportado")
+            close_program()
 
     serial_thread = threading.Thread(target=serial_handler.listening_to_serial, args=())
     mqtt_thread = threading.Thread(target=mqtt_handler.listening_to_mqtt, args=())
@@ -131,10 +152,7 @@ def main():
             save_queue_to_file(momevents_queue, "queue.picke")
     except KeyboardInterrupt:
         print("Programa terminado por el usuario")
-        if is_platform_windows():
-            os._exit(1)
-        if is_platform_linux():
-            os.kill(os.getpid(), signal.SIGINT)
+        close_program()
         
 
 if __name__ == "__main__":

@@ -77,15 +77,15 @@ class SerialPortHandler:
                 #self.logger.debug("Intentando reconectar serial...")
                 message = OrderedDict([
                 ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-                ("ID_Panel", self.config["cliente"]["id_facp"]),
+                ("ID_Panel", self.config["cliente"]["id_panel"]),
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+                ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
                 ("Mensaje", "Fallo serial"),
                 ("Tipo", "Estado")
                 ])
                 self.queue.put((PublishType.ESTADO, json.dumps(message)))
                 time.sleep(60)
                 #self.logger.exception("Error encontrado intentando abrir el serial: ")
-    
 
     def close_serial_port(self) -> None:
         if self.ser and self.ser.is_open:
@@ -139,12 +139,10 @@ class SerialPortHandler:
         else:
             return False
 
-
     def parse_string_event(self,event: str) -> OrderedDict:
         "Se implementa el parseo de los eventos"
         self.logger.error("La funcion 'parse_string_event' se debe implementar!")
         pass
-
 
     def parse_string_report(self, report: str) -> OrderedDict:
         "Se implementa el parseo de los eventos"
