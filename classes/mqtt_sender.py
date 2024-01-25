@@ -106,5 +106,5 @@ class MqttHandler:
                     time.sleep(1)
             except Exception as e:
                 time.sleep(5)
-                self.logger.exception("Error inesperado ocurrido: ")
+                self.logger.error("Error inesperado ocurrido. Intentando conectar al broker MQTT de nuevo")
             
