@@ -119,12 +119,12 @@ def main():
     logger = logging.getLogger(__name__)
     
     path = os.path.join("config", "config.yaml")
-    config = load_and_verify_yaml(resource_path(path), verify_config, logger)
+    config = load_and_verify_yaml(path, verify_config, logger)
     if config is None:
         sys.exit(1)
 
     path = os.path.join("config", 'eventSeverityLevels.yaml')
-    eventSeverityLevels = load_and_verify_yaml(resource_path(path), verify_eventSeverityLevels, logger)
+    eventSeverityLevels = load_and_verify_yaml(path, verify_eventSeverityLevels, logger)
     if eventSeverityLevels is None:
         sys.exit(2)
     
@@ -133,13 +133,20 @@ def main():
     mqtt_handler = MqttHandler(config, momevents_queue)
     serial_handler = None
 
-    #Acá se implementa cada FACP que se implementa para setearlo
+    if_eventSeverityList = config['cliente']['id_modelo_panel'] in eventSeverityLevels
+    if not if_eventSeverityList:
+        logger.error("No se ha especificado niveles de severidad para las alarmas para el código del FACP ingresado en la configuración.")
+        close_program()
+
+    #Acá se decide qué parseador usar acorde al panel
     match config['cliente']['id_modelo_panel']:
         case 10001: #Edwards iO1000
-            serial_handler = Edwards_iO1000(config, eventSeverityLevels, momevents_queue)
+            serial_handler = Edwards_iO1000(config, eventSeverityLevels[config['cliente']['id_modelo_panel']], momevents_queue)
         case _:
             logger.error("El modelo de panel especificado no fue encontrado. Verifica el nombre ingresado y si el fACP está soportado")
             close_program()
+
+    
 
     serial_thread = threading.Thread(target=serial_handler.listening_to_serial, args=())
     mqtt_thread = threading.Thread(target=mqtt_handler.listening_to_mqtt, args=())

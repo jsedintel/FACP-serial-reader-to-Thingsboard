@@ -19,5 +19,5 @@ serial:
 cliente:
   id_cliente: Test
   id_panel: 1
-  modelo_panel: Edward's iO1000
+  modelo_panel: Edwards iO1000
   id_modelo_panel: 10001
