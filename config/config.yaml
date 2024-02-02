@@ -7,9 +7,9 @@ mqtt:
 #Componentes respectivos a serial
 serial:
   #Puerto correspondiente en el que se conectará el USB
-  puerto: /dev/serial
+  puerto: COM7
   #De aqui en adelante es probable que no se deban modificar, a menos de que los intruyan a hacerlo
-  baudrate: 9600
+  baudrate: 4800
   bytesize: 8
   parity: N
   stopbits: 1
@@ -17,7 +17,7 @@ serial:
   timeout: 1
 #Componentes respectivos a la informacion del cliente y del dispositivo
 cliente:
-  id_cliente: Test
+  id_cliente: Edintel_Test
   id_panel: 1
-  modelo_panel: Edwards iO1000
-  id_modelo_panel: 10001
+  modelo_panel: Edwards EST3x
+  id_modelo_panel: 10002

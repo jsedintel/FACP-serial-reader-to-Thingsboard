@@ -142,6 +142,8 @@ def main():
     match config['cliente']['id_modelo_panel']:
         case 10001: #Edwards iO1000
             serial_handler = Edwards_iO1000(config, eventSeverityLevels[config['cliente']['id_modelo_panel']], momevents_queue)
+        case 10002: #Edwards EST3x
+            serial_handler = Edwards_EST3x(config, eventSeverityLevels[config['cliente']['id_modelo_panel']], momevents_queue)
         case _:
             logger.error("El modelo de panel especificado no fue encontrado. Verifica el nombre ingresado y si el fACP está soportado")
             close_program()

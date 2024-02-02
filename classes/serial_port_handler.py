@@ -159,7 +159,7 @@ class SerialPortHandler:
                 self.logger.error("Perdida de la conexion serial.")
                 self.attempt_reconnection()
             except (TypeError, UnicodeDecodeError) as e:
-                self.logger.error("Error ocurrido, caracter extranio encontrado. Reiniciando el serial")
+                self.logger.exception("Error ocurrido, caracter extranio encontrado. Reiniciando el serial")
                 self.ser = None
             except Exception as e:
                 self.close_serial_port()
