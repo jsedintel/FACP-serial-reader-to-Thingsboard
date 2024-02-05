@@ -210,11 +210,12 @@ class Edwards_EST3x(SerialPortHandler):
         return self.end_report_delimiter in last_line
     
     def handle_empty_line(self, buffer: str, report_count: int) -> bool:
+        #self.logger.debug("Buffer: " + buffer)
         if report_count == 0 and buffer.strip() and self.check_last_line(buffer):
-            #self.logger.debug("Reporte vacio parseado. Saltandolo.")
+            self.logger.debug("Reporte vacio parseado. Saltandolo.")
             return True
         if report_count == self.max_report_delimiter_count and buffer.strip() and self.check_last_line(buffer):
-            #self.logger.debug("Reporte parseado.")
+            self.logger.debug("Reporte parseado.")
             self.publish_parsed_report(buffer)
             return True
         elif report_count == 0 and buffer.strip():

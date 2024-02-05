@@ -99,7 +99,7 @@ class SerialPortHandler:
         try:
             while True:
                 if self.ser.in_waiting > 0:
-                    incoming_line = self.ser.readline().decode('utf-8').strip()
+                    incoming_line = self.ser.readline().decode('latin-1').strip()
 
                     if not incoming_line:
                         if_eof = self.handle_empty_line(buffer, report_count)
