@@ -205,16 +205,22 @@ class Edwards_EST3x(SerialPortHandler):
         return report_data
 
     def check_last_line(self, string: str) -> bool:
-        last_newline = string.rfind('\n')
+        last_newline = string.rfind('\n', 0, string.rfind('\n'))
         last_line = string[last_newline+1:]
         return self.end_report_delimiter in last_line
     
     def handle_empty_line(self, buffer: str, report_count: int) -> bool:
+        if report_count == 0 and buffer.strip() and self.check_last_line(buffer):
+            #self.logger.debug("Reporte vacio parseado. Saltandolo.")
+            return True
         if report_count == self.max_report_delimiter_count and buffer.strip() and self.check_last_line(buffer):
+            #self.logger.debug("Reporte parseado.")
             self.publish_parsed_report(buffer)
             return True
         elif report_count == 0 and buffer.strip():
+            #self.logger.debug("Evento parseado.")
             self.publish_parsed_event(buffer)
             return True
         else:
             return False
+
