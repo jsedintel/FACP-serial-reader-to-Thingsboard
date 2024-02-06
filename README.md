@@ -1,8 +1,12 @@
-##Manuales
+# Manuales
+
 [Creacion y configuracion del Gateway](https://www.overleaf.com/read/zhknvrjfjctv#0a0f39)
+
 [Manual Telegraf](https://www.overleaf.com/read/ypgpgycvdmzz#beedc1)
+
 [Manual Grafana](https://www.overleaf.com/read/nkdtsyyfcxtg#de2d68)
--Simulacion
+
+# Simulacion
 
 Creacion puerto virtual para conexion local
 sudo socat PTY,link=/tmp/virtual-serial,rawer,echo=0 PTY,echo=0 &
@@ -12,7 +16,7 @@ el puerto 12345 en la direccion "/tmp/virtual-serial"
 sudo socat PTY,link=/tmp/virtual-serial,rawer TCP-LISTEN:12345,reuseaddr
 
 ------------------------------------
--Creacion de servicio del script para el SO
+# Creacion de servicio del script para el SO
 
 Al archivo "serial_to_mqtt.service" modificarle la configuracion WorkingDirectory 
 a la carpeta que contiene el main, que contiene la carpeta "config" con los archivos
@@ -35,7 +39,7 @@ todo este funcionando de forma correcta:
 sudo systemdctl status serial_to_mqtt.service
 
 -------------------------------------
--Compilar la aplicacion
+# Compilar la aplicacion
 
 Para compilar la aplicacion en caso de algun cambio, solo se 
 debe acceder al entorno virtual de pithon de 
