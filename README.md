@@ -1,3 +1,7 @@
+##Manuales
+[Creacion y configuracion del Gateway](https://www.overleaf.com/read/zhknvrjfjctv#0a0f39)
+[Manual Telegraf](https://www.overleaf.com/read/ypgpgycvdmzz#beedc1)
+[Manual Grafana](https://www.overleaf.com/read/nkdtsyyfcxtg#de2d68)
 -Simulacion
 
 Creacion puerto virtual para conexion local
