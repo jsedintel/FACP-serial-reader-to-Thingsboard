@@ -28,6 +28,7 @@ class SerialPortHandler:
         self.ser.stopbits=self.config["serial"]["stopbits"]
         self.ser.xonxoff=self.config["serial"]["xonxoff"]
         self.ser.timeout=self.config["serial"]["timeout"]
+        self.ser.set_buffer_size(rx_size=65536, tx_size=65536)
 
     def open_serial_port(self) -> None:
         if self.ser is None:
@@ -84,7 +85,7 @@ class SerialPortHandler:
                 ("Tipo", "Estado")
                 ])
                 self.queue.put((PublishType.ESTADO, json.dumps(message)))
-                time.sleep(60)
+                time.sleep(1)
                 #self.logger.exception("Error encontrado intentando abrir el serial: ")
 
     def close_serial_port(self) -> None:
@@ -160,7 +161,7 @@ class SerialPortHandler:
                 self.attempt_reconnection()
             except (TypeError, UnicodeDecodeError) as e:
                 self.logger.exception("Error ocurrido, caracter extranio encontrado. Reiniciando el serial")
-                self.ser = None
+                self.ser.reset_input_buffer()
             except Exception as e:
                 self.close_serial_port()
                 self.logger.error(f"Ha ocurrido un error inesperado: {str(e)}")

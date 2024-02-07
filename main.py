@@ -114,16 +114,16 @@ def verify_eventSeverityLevels(eventSeverityLevels: dict) -> dict:
     return incorrect_entries
 
 def main():
-    path = os.path.join("config", "logging_config.yaml")
+    path = os.path.join("config", "logging_config.yml")
     setup_logging(resource_path(path))
     logger = logging.getLogger(__name__)
     
-    path = os.path.join("config", "config.yaml")
+    path = os.path.join("config", "config.yml")
     config = load_and_verify_yaml(path, verify_config, logger)
     if config is None:
         sys.exit(1)
 
-    path = os.path.join("config", 'eventSeverityLevels.yaml')
+    path = os.path.join("config", 'eventSeverityLevels.yml')
     eventSeverityLevels = load_and_verify_yaml(path, verify_eventSeverityLevels, logger)
     if eventSeverityLevels is None:
         sys.exit(2)
