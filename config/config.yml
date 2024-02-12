@@ -7,7 +7,7 @@ mqtt:
 #Componentes respectivos a serial
 serial:
   #Puerto correspondiente en el que se conectará el USB
-  puerto: COM4
+  puerto: COM7
   #De aqui en adelante es probable que no se deban modificar, a menos de que los intruyan a hacerlo
   baudrate: 4800
   bytesize: 8
@@ -21,3 +21,6 @@ cliente:
   id_panel: 1
   modelo_panel: Edwards EST3x
   id_modelo_panel: 10002
+  coordenadas:
+    latitud: 9.929289
+    longitud: -84.104287

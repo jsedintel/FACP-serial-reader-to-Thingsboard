@@ -17,6 +17,7 @@ class SerialPortHandler:
         self.logger = logging.getLogger(__name__)
         self.report_delimiter = ""
         self.max_report_delimiter_count = -1
+        self.default_event_severity_not_recognized = 3
 
     def init_serial_port(self) -> None:
         # Inicializa el puerto serial
@@ -28,7 +29,6 @@ class SerialPortHandler:
         self.ser.stopbits=self.config["serial"]["stopbits"]
         self.ser.xonxoff=self.config["serial"]["xonxoff"]
         self.ser.timeout=self.config["serial"]["timeout"]
-        self.ser.set_buffer_size(rx_size=65536, tx_size=65536)
 
     def open_serial_port(self) -> None:
         if self.ser is None:
@@ -42,8 +42,12 @@ class SerialPortHandler:
                 ("ID_Cliente", self.config["cliente"]["id_cliente"]),
                 ("ID_Panel", self.config["cliente"]["id_panel"]),
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+                ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
                 ("Mensaje", "Conectado"),
-                ("Tipo", "Estado")
+                ("Tipo", "Estado"),
+                ("Nivel_Severidad", 0),
+                ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+                ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
             ])
             self.queue.put((PublishType.ESTADO, json.dumps(message)))
             self.logger.debug("Serial conectado")
@@ -82,7 +86,10 @@ class SerialPortHandler:
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
                 ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
                 ("Mensaje", "Fallo serial"),
-                ("Tipo", "Estado")
+                ("Tipo", "Estado"),
+                ("Nivel_Severidad", 5),
+                ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+                ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
                 ])
                 self.queue.put((PublishType.ESTADO, json.dumps(message)))
                 time.sleep(1)

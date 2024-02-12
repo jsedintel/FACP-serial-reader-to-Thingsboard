@@ -80,7 +80,7 @@ def verify_config(config: dict) -> dict:
     required_structure = {
         "mqtt": {"usuario", "contrasena", "url", "puerto"},
         "serial": {"puerto", "baudrate", "bytesize", "parity", "stopbits", "xonxoff", "timeout"},
-        "cliente": {"id_cliente", "id_panel", "modelo_panel", "id_modelo_panel"}
+        "cliente": {"id_cliente", "id_panel", "modelo_panel", "id_modelo_panel", "coordenadas"}
     }
 
     missing_keys = {}
@@ -94,6 +94,18 @@ def verify_config(config: dict) -> dict:
         missing_sub_keys = sub_keys - config[main_key].keys()
         if missing_sub_keys:
             missing_keys[main_key] = missing_sub_keys
+
+    # Check if "coordenadas" attribute exists and has "latitud" and "longitud" keys as floats
+    if "cliente" in config and "coordenadas" in config["cliente"]:
+        coordenadas = config["cliente"]["coordenadas"]
+        if not isinstance(coordenadas, dict) or "latitud" not in coordenadas or "longitud" not in coordenadas:
+            missing_keys.setdefault("cliente", set()).add("coordenadas")
+
+        else:
+            latitud = coordenadas["latitud"]
+            longitud = coordenadas["longitud"]
+            if not isinstance(latitud, float) or not isinstance(longitud, float):
+                missing_keys.setdefault("cliente", set()).add("coordenadas")
 
     return missing_keys
 

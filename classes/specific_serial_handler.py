@@ -29,7 +29,7 @@ class Specific_Serial_Handler_Template(SerialPortHandler):
             ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
             ("Mensaje", ID_Event),
             ("Tipo", "Evento"),
-            ("Nivel_Severidad", self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else 999),
+            ("Nivel_Severidad", self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else self.default_event_severity_not_recognized),
             ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
             ("Fecha_Panel", Fecha_Panel),
             ("Metadata", metadata),
@@ -113,11 +113,13 @@ class Edwards_iO1000(SerialPortHandler):
             ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
             ("Mensaje", ID_Event),
             ("Tipo", "Evento"),
-            ("Nivel_Severidad", self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else 999),
+            ("Nivel_Severidad", self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else self.default_event_severity_not_recognized),
             ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
             ("Fecha_Panel", Fecha_Panel),
             ("Metadata", metadata),
-            ("uniq", random.rand())
+            ("uniq", random.rand()),
+            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
         ])
         return event_data
 
@@ -130,6 +132,8 @@ class Edwards_iO1000(SerialPortHandler):
             ("Mensaje", report),
             ("Tipo", "Reporte"),
             ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
+            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
         ])
 
         return report_data
@@ -182,11 +186,13 @@ class Edwards_EST3x(SerialPortHandler):
             ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
             ("Mensaje", ID_Event),
             ("Tipo", "Evento"),
-            ("Nivel_Severidad", self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else 999),
+            ("Nivel_Severidad", self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else self.default_event_severity_not_recognized),
             ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
             ("Fecha_Panel", Fecha_Panel),
             ("Metadata", metadata),
-            ("uniq", random.rand())
+            ("uniq", random.rand()),
+            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
         ])
         return event_data
 
@@ -200,6 +206,8 @@ class Edwards_EST3x(SerialPortHandler):
             ("Mensaje", report),
             ("Tipo", "Reporte"),
             ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
+            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
         ])
         
         return report_data
@@ -225,3 +233,50 @@ class Edwards_EST3x(SerialPortHandler):
         else:
             return False
 
+class Notifier_NFS320(SerialPortHandler):
+    def __init__(self, config: dict, eventSeverityLevels: dict, queue: SafeQueue):
+        super().__init__(config, eventSeverityLevels, queue)
+        #Esto se considera, en caso de que exista un delimitador claro en cada reporte
+        self.report_delimiter = "************"
+        self.max_report_delimiter_count = 2 # configurarlo acorde a la cantidad de apariciones del delimitador por reporte 
+        
+
+    def parse_string_event(self,event: str) -> OrderedDict:
+        #Extraer lo siguientes valores mediante el parseo del dato:
+        ID_Event = ''
+        Fecha_Panel = ''
+        metadata = ''
+
+        #El resultado que se tiene que generar:
+        event_data = OrderedDict([
+            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
+            ("ID_Panel", self.config["cliente"]["id_panel"]),
+            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
+            ("Mensaje", ID_Event),
+            ("Tipo", "Evento"),
+            ("Nivel_Severidad", self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else self.default_event_severity_not_recognized),
+            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
+            ("Fecha_Panel", Fecha_Panel),
+            ("Metadata", metadata),
+            ("uniq", random.rand()),
+            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
+        ])
+        return event_data
+
+    def parse_string_report(self, report: str) -> OrderedDict:
+        
+        report_data = OrderedDict([
+            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
+            ("ID_Panel", self.config["cliente"]["id_panel"]),
+            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
+            ("Mensaje", report),
+            ("Tipo", "Reporte"),
+            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
+            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
+        ])
+        
+        return report_data

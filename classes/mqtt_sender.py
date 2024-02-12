@@ -23,7 +23,10 @@ class MqttHandler:
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
                 ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
                 ("Mensaje", "Desconectado"),
-                ("Tipo", "Estado")
+                ("Tipo", "Estado"),
+                ("Nivel_Severidad", 4),
+                ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+                ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
             ]))
             self.client.will_set(self.config["cliente"]["id_cliente"]+"/FACP/"+str(self.config["cliente"]["id_panel"])+"/Estado", 
                                 payload=lwt_message, qos=2, retain=True)
@@ -47,7 +50,10 @@ class MqttHandler:
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
                 ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
                 ("Mensaje", "Conectado"),
-                ("Tipo", "Estado")
+                ("Tipo", "Estado"),
+                ("Nivel_Severidad", 0),
+                ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+                ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
             ]))
             self.publish(message, PublishType.ESTADO)
             self.logger.debug("Se ha conectado al broker MQTT")
