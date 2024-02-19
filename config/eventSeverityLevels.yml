@@ -1,7 +1,7 @@
 #ID_Panel, Evento y su respectivo nivel de severidad
 #ID_panel:
 #- Eventos: Nvl_Severidad
-21112:
+10001:
   HUMO ACT: 6
   CALOR ACT: 6
   DUCTO ACT: 6
@@ -56,7 +56,7 @@
   TRBL RST: 1
   DSBL RST: 1
   TEST RST: 1
-21116:
+10002:
   COMANDO DEL OPERADOR: 2
   AVER. LOCAL ACT.: 2
   AVERIA ABIER.ACT: 2
@@ -70,7 +70,7 @@
   AVER. COMUN RST.: 1
   AVER.ABIER.REST: 1
   MNTR LOCAL RST.: 1
-21113:
+10003:
   NORMAL TERMICO: 1
   NORMAL MONITOR: 1
   AVERIA CONTROL: 1

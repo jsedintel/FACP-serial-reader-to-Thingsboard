@@ -118,7 +118,7 @@ def verify_eventSeverityLevels(eventSeverityLevels: dict) -> dict:
                 raise KeyError("Codigo del panel invalido")
             for event_id, severity_level in events.items():
                 # Chequea si la severidad esta entre 0 y 2
-                if not isinstance(severity_level, int) or not 0 <= severity_level <= 2:
+                if not isinstance(severity_level, int) or not 0 <= severity_level <= 6:
                     incorrect_entries[event_id] = severity_level
     except Exception as e:
         incorrect_entries['Error en el formato del archivo'] = -1
