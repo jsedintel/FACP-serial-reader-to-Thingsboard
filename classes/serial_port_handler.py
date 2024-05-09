@@ -6,7 +6,7 @@ from collections import OrderedDict
 import time
 import json
 import logging
-
+import datetime
 
 class SerialPortHandler:
     def __init__(self, config: dict, eventSeverityLevels: dict, queue: SafeQueue):
@@ -18,6 +18,10 @@ class SerialPortHandler:
         self.report_delimiter = ""
         self.max_report_delimiter_count = -1
         self.default_event_severity_not_recognized = 3
+        self.parity_dic = {'none': serial.PARITY_NONE, 
+            'even': serial.PARITY_EVEN,
+            'odd': serial.PARITY_ODD
+        }
 
     def init_serial_port(self) -> None:
         # Inicializa el puerto serial
@@ -25,7 +29,7 @@ class SerialPortHandler:
         self.ser.port=self.config["serial"]["puerto"]
         self.ser.baudrate=self.config["serial"]["baudrate"]
         self.ser.bytesize=self.config["serial"]["bytesize"]
-        self.ser.parity=self.config["serial"]["parity"]
+        self.ser.parity=self.parity_dic[self.config["serial"]["parity"]]
         self.ser.stopbits=self.config["serial"]["stopbits"]
         self.ser.xonxoff=self.config["serial"]["xonxoff"]
         self.ser.timeout=self.config["serial"]["timeout"]
@@ -107,8 +111,8 @@ class SerialPortHandler:
         try:
             while True:
                 if self.ser.in_waiting > 0:
-                    incoming_line = self.ser.readline().decode('latin-1').strip()
-
+                    raw_data = self.ser.readline()
+                    incoming_line = raw_data.decode('latin-1').strip()
                     if not incoming_line:
                         if_eof = self.handle_empty_line(buffer, report_count)
                         if if_eof:
@@ -153,9 +157,19 @@ class SerialPortHandler:
         pass
 
     def parse_string_report(self, report: str) -> OrderedDict:
-        "Se implementa el parseo de los eventos"
-        self.logger.error("La funcion 'parse_string_report' se debe implementar!")
-        pass
+        report_data = OrderedDict([
+            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
+            ("ID_Panel", self.config["cliente"]["id_panel"]),
+            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
+            ("Mensaje", report),
+            ("Tipo", "Reporte"),
+            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
+            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
+        ])
+        
+        return report_data
 
     def listening_to_serial(self) -> None:
         while True:

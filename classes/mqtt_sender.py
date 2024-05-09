@@ -14,7 +14,7 @@ class MqttHandler:
         self.logger = logging.getLogger(__name__)
 
     def connect(self) -> None:
-            self.client = mqtt.Client()
+            self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=self.config["cliente"]["id_cliente"]+"_"+str(self.config["cliente"]["id_panel"])+"_FACP")
             self.client.username_pw_set(username=self.config["mqtt"]["usuario"], password=self.config["mqtt"]["contrasena"])
             self.client.tls_set()
             lwt_message = json.dumps(OrderedDict([

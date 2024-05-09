@@ -147,15 +147,23 @@ def main():
 
     if_eventSeverityList = config['cliente']['id_modelo_panel'] in eventSeverityLevels
     if not if_eventSeverityList:
-        logger.error("No se ha especificado niveles de severidad para las alarmas para el código del FACP ingresado en la configuración.")
+        logger.error("No se encontró una lista de severidad de eventos asociada al modelo de panel especificado. Verifica el nombre ingresado y si el FACP está soportado.")
         close_program()
 
+    try:
+        id_modelo_panel = config['cliente']['id_modelo_panel']
+        severity_list = eventSeverityLevels[id_modelo_panel]
+    except Exception as e:
+        logger.error("El modelo de panel especificado no fue encontrado. Verifica el nombre ingresado y si el fACP está soportado")
+        close_program()
     #Acá se decide qué parseador usar acorde al panel
     match config['cliente']['id_modelo_panel']:
         case 10001: #Edwards iO1000
-            serial_handler = Edwards_iO1000(config, eventSeverityLevels[config['cliente']['id_modelo_panel']], momevents_queue)
+            serial_handler = Edwards_iO1000(config, severity_list, momevents_queue)
         case 10002: #Edwards EST3x
-            serial_handler = Edwards_EST3x(config, eventSeverityLevels[config['cliente']['id_modelo_panel']], momevents_queue)
+            serial_handler = Edwards_EST3x(config, severity_list, momevents_queue)
+        case 10003: #Notifier NFS320
+            serial_handler = Notifier_NFS320(config, severity_list, momevents_queue)
         case _:
             logger.error("El modelo de panel especificado no fue encontrado. Verifica el nombre ingresado y si el fACP está soportado")
             close_program()

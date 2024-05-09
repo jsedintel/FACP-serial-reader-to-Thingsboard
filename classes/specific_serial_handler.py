@@ -4,7 +4,9 @@ from datetime import datetime
 from numpy import random
 from classes.serial_port_handler import SerialPortHandler
 from classes.utils import SafeQueue
-from typing import Tuple
+import re
+import time
+import serial
 
 class Specific_Serial_Handler_Template(SerialPortHandler):
     def __init__(self, config: dict, eventSeverityLevels: dict, queue: SafeQueue):
@@ -36,27 +38,6 @@ class Specific_Serial_Handler_Template(SerialPortHandler):
             ("uniq", random.rand())
         ])
         return event_data
-        '''
-        pass
-
-
-    def parse_string_report(self, report: str) -> OrderedDict:
-        '''
-        #De ser posible, extraer la fecha del reporte, si no, no incluirla.
-        Fecha_Panel = ''
-        
-        report_data = OrderedDict([
-            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-            ("ID_Panel", self.config["cliente"]["id_panel"]),
-            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-            ("Mensaje", report),
-            ("Tipo", "Reporte"),
-            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
-            ("Fecha_Panel", Fecha_Panel),
-        ])
-        
-        return report_data
         '''
         pass
 
@@ -123,21 +104,6 @@ class Edwards_iO1000(SerialPortHandler):
         ])
         return event_data
 
-    def parse_string_report(self, report: str) -> OrderedDict:
-        report_data = OrderedDict([
-            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-            ("ID_Panel", self.config["cliente"]["id_panel"]),
-            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-            ("Mensaje", report),
-            ("Tipo", "Reporte"),
-            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
-            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-        ])
-
-        return report_data
-
 class Edwards_EST3x(SerialPortHandler):
     def __init__(self, config: dict, eventSeverityLevels: dict, queue: SafeQueue):
         super().__init__(config, eventSeverityLevels, queue)
@@ -196,22 +162,6 @@ class Edwards_EST3x(SerialPortHandler):
         ])
         return event_data
 
-    def parse_string_report(self, report: str) -> OrderedDict:
-        
-        report_data = OrderedDict([
-            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-            ("ID_Panel", self.config["cliente"]["id_panel"]),
-            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-            ("Mensaje", report),
-            ("Tipo", "Reporte"),
-            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
-            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-        ])
-        
-        return report_data
-
     def check_last_line(self, string: str) -> bool:
         last_newline = string.rfind('\n', 0, string.rfind('\n'))
         last_line = string[last_newline+1:]
@@ -239,13 +189,32 @@ class Notifier_NFS320(SerialPortHandler):
         #Esto se considera, en caso de que exista un delimitador claro en cada reporte
         self.report_delimiter = "************"
         self.max_report_delimiter_count = 2 # configurarlo acorde a la cantidad de apariciones del delimitador por reporte 
-        
 
     def parse_string_event(self,event: str) -> OrderedDict:
-        #Extraer lo siguientes valores mediante el parseo del dato:
-        ID_Event = ''
-        Fecha_Panel = ''
-        metadata = ''
+        metadata = ""
+        severity = -1
+        try:
+            lines = list(filter(None, event.strip().split('\n')))
+            if not lines:
+                self.logger.error(f"Evento inválido recibido: {event}")
+                return None
+
+            primary_data = re.split(r'\s{3,}', lines[0])
+            if len(primary_data) < 2:
+                self.logger.error(f"Evento inválido recibido: {event}")
+                return None
+            if ":" in primary_data[0].strip():
+                severity = 6
+            ID_Event = primary_data[0].strip()
+            metadata += ' / '.join(primary_data[1:]).strip()
+
+            if len(lines) > 1:
+                for line in lines[1:]:
+                    metadata = metadata + line.strip() + "\n"
+
+        except Exception as e:
+            self.logger.exception("Ocurrió un error al parsear el evento: " + event)
+            return None
 
         #El resultado que se tiene que generar:
         event_data = OrderedDict([
@@ -255,28 +224,44 @@ class Notifier_NFS320(SerialPortHandler):
             ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
             ("Mensaje", ID_Event),
             ("Tipo", "Evento"),
-            ("Nivel_Severidad", self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else self.default_event_severity_not_recognized),
+            ("Nivel_Severidad", severity if severity == 6 else (self.eventSeverityLevels[ID_Event] if ID_Event in self.eventSeverityLevels else self.default_event_severity_not_recognized)),
             ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
-            ("Fecha_Panel", Fecha_Panel),
             ("Metadata", metadata),
             ("uniq", random.rand()),
             ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
             ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
         ])
         return event_data
-
-    def parse_string_report(self, report: str) -> OrderedDict:
-        
-        report_data = OrderedDict([
-            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-            ("ID_Panel", self.config["cliente"]["id_panel"]),
-            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-            ("Mensaje", report),
-            ("Tipo", "Reporte"),
-            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
-            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-        ])
-        
-        return report_data
+    
+    def process_incoming_data(self) -> None:
+        buffer = ""
+        report_count = 0
+        add_blank_line = False
+        try:
+            while True:
+                if self.ser.in_waiting > 0 or add_blank_line:
+                    if add_blank_line:
+                        add_blank_line = False  
+                        if_eof = self.handle_empty_line(buffer, report_count)
+                        if if_eof:
+                            buffer = ""
+                            report_count = 0
+                    else:
+                        raw_data = self.ser.readline()
+                        incoming_line = raw_data.decode('latin-1').strip()
+                        buffer, report_count = self.handle_data_line(incoming_line, buffer, report_count)
+                        add_blank_line = True 
+                else:
+                    time.sleep(0.1)
+        except (serial.SerialException, serial.SerialTimeoutException) as e:
+            raise serial.Exception(str(e))
+        except (TypeError, UnicodeDecodeError) as e:
+            if buffer != "":
+                if report_count > 0:
+                    self.publish_parsed_report(buffer)
+                else:
+                    self.publish_parsed_event(buffer)
+            raise TypeError(str(e))
+        except Exception as e:
+            #self.logger.exception("Fallo inesperado ocurrido: ")
+            raise Exception(str(e))

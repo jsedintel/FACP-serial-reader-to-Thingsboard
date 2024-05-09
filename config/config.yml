@@ -9,18 +9,18 @@ serial:
   #Puerto correspondiente en el que se conectará el USB
   puerto: COM7
   #De aqui en adelante es probable que no se deban modificar, a menos de que los intruyan a hacerlo
-  baudrate: 4800
-  bytesize: 8
-  parity: N
+  baudrate: 9600
+  bytesize: 7
+  parity: even
   stopbits: 1
-  xonxoff: False
+  xonxoff: True
   timeout: 1
 #Componentes respectivos a la informacion del cliente y del dispositivo
 cliente:
   id_cliente: Edintel_Test
   id_panel: 1
-  modelo_panel: Edwards EST3x
-  id_modelo_panel: 10002
+  modelo_panel: Notifier NFS320
+  id_modelo_panel: 10003
   coordenadas:
     latitud: 9.929289
     longitud: -84.104287
