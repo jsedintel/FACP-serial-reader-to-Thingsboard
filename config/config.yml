@@ -1,7 +1,7 @@
 #Componentes respectivos a MQTT
 mqtt:
-  usuario: ClientePrueba
-  contrasena: ClientePrueba1
+  usuario: PC_Test
+  contrasena: Test1234
   url: c4e2607e9758412696b75708d95794bb.s1.eu.hivemq.cloud
   puerto: 8883
 #Componentes respectivos a serial
@@ -17,7 +17,7 @@ serial:
   timeout: 1
 #Componentes respectivos a la informacion del cliente y del dispositivo
 cliente:
-  id_cliente: Edintel_Test
+  id_cliente: PC_Test
   id_panel: 1
   modelo_panel: Notifier NFS320
   id_modelo_panel: 10003

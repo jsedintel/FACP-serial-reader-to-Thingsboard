@@ -96,7 +96,7 @@ class SerialPortHandler:
                 ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
                 ])
                 self.queue.put((PublishType.ESTADO, json.dumps(message)))
-                time.sleep(1)
+                time.sleep(3)
                 #self.logger.exception("Error encontrado intentando abrir el serial: ")
 
     def close_serial_port(self) -> None:

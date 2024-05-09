@@ -171,7 +171,7 @@ def main():
     
 
     serial_thread = threading.Thread(target=serial_handler.listening_to_serial, args=())
-    mqtt_thread = threading.Thread(target=mqtt_handler.listening_to_mqtt, args=())
+    mqtt_thread = threading.Thread(target=mqtt_handler.listen_to_mqtt, args=())
     
     # Set daemon flag to True for both threads
     serial_thread.daemon = True
