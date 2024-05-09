@@ -172,11 +172,21 @@ def main():
 
     serial_thread = threading.Thread(target=serial_handler.listening_to_serial, args=())
     mqtt_thread = threading.Thread(target=mqtt_handler.listening_to_mqtt, args=())
+    
+    # Set daemon flag to True for both threads
+    serial_thread.daemon = True
+    mqtt_thread.daemon = True
+
     serial_thread.start()
     mqtt_thread.start()
 
     try:
         while True:
+            # Check if either thread has died
+            if not serial_thread.is_alive() or not mqtt_thread.is_alive():
+                logger.error("One of the threads has died. Terminating the application.")
+                close_program()
+
             time.sleep(5)
             save_queue_to_file(momevents_queue, "queue.picke")
     except KeyboardInterrupt:
