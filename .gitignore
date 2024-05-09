@@ -4,3 +4,4 @@ testing/
 *.log
 *.picke
 config.yml
+*.service
