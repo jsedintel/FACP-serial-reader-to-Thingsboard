@@ -10,6 +10,7 @@ from classes.logging_config import setup_logging
 from classes.specific_serial_handler import *
 from classes.mqtt_sender import MqttHandler
 from classes.utils import SafeQueue
+from classes.update_app import update_check_thread
 import platform
 import signal
 
@@ -172,13 +173,16 @@ def main():
 
     serial_thread = threading.Thread(target=serial_handler.listening_to_serial, args=())
     mqtt_thread = threading.Thread(target=mqtt_handler.listen_to_mqtt, args=())
+    updates_thread = threading.Thread(target=update_check_thread, args=())
     
     # Set daemon flag to True for both threads
     serial_thread.daemon = True
     mqtt_thread.daemon = True
+    updates_thread.daemon = True
 
     serial_thread.start()
     mqtt_thread.start()
+    updates_thread.start()
 
     try:
         while True:
