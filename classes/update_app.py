@@ -62,4 +62,4 @@ def update_check_thread():
         if is_update_time():
             latest_tag = get_latest_release()
             check_zip_file(latest_tag)
-        sleep(60)  # Update check interval (in seconds)
+        sleep(60)
