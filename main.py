@@ -187,7 +187,7 @@ def main():
     try:
         while True:
             # Check if either thread has died
-            if not serial_thread.is_alive() or not mqtt_thread.is_alive():
+            if not serial_thread.is_alive() or not mqtt_thread.is_alive() or not updates_thread.is_alive():
                 logger.error("One of the threads has died. Terminating the application.")
                 close_program()
 
