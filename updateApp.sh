@@ -24,11 +24,9 @@ if [ ! -f "$latest_tag.zip" ]; then
   unzip "$latest_tag.zip"
   
   # Synchronize the files from the unzipped folder to the existing directories
-  rsync -av --delete "Serial_to_Mqtt_Gateway_for_FACP-$folder_name/classes/" classes/
-  rsync -av --delete "Serial_to_Mqtt_Gateway_for_FACP-$folder_name/config/" config/
-  
-  # Move the remaining files from the unzipped folder to the current directory
-  mv "Serial_to_Mqtt_Gateway_for_FACP-$folder_name"/* .
+  rsync -av "Serial_to_Mqtt_Gateway_for_FACP-$folder_name/classes/" classes/
+  rsync -av "Serial_to_Mqtt_Gateway_for_FACP-$folder_name/config/" config/
+  rsync -av "Serial_to_Mqtt_Gateway_for_FACP-$folder_name/." .
   
   # Remove the unzipped folder
   rm -rf "Serial_to_Mqtt_Gateway_for_FACP-$folder_name"
