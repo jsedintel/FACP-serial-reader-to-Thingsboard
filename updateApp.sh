@@ -11,11 +11,11 @@ latest_tag=$(echo "$latest_release" | grep '"tag_name":' | sed -E 's/.*"([^"]+)"
 
 # Check if the latest release is already downloaded
 if [ ! -f "$latest_tag.zip" ]; then
-    # Download the source code ZIP file of the latest release
-    wget "https://github.com/Andres10976/Serial_to_Mqtt_Gateway_for_FACP/archive/$latest_tag.zip" -O "$latest_tag.zip"
-
     # Remove the previous .zip file if it exists
     rm -f *.zip
+
+    # Download the source code ZIP file of the latest release
+    wget "https://github.com/Andres10976/Serial_to_Mqtt_Gateway_for_FACP/archive/$latest_tag.zip" -O "$latest_tag.zip"
 
     # Unzip the source code
     unzip "$latest_tag.zip"
