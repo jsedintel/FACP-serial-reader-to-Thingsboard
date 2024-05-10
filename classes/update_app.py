@@ -1,6 +1,6 @@
 import os
 import subprocess
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from time import sleep
 import requests
 import sys
@@ -40,15 +40,15 @@ def check_zip_file(latest_tag):
 
 def is_update_time():
     """Checks if the current time is within the designated update window.
-
     The update window is currently set between 00:00 and 01:00 (inclusive).
 
     Returns:
         bool: True if the current time is within the update window, False otherwise.
     """
-
     current_time = datetime.now().time()
-    return current_time >= time(0, 0) and current_time <= time(1, 0)
+    start_time = time(0, 0)
+    end_time = (datetime.combine(datetime.today(), start_time) + timedelta(hours=1)).time()
+    return start_time <= current_time <= end_time
 
 
 def update_check_thread():
