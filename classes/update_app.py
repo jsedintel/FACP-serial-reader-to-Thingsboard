@@ -3,6 +3,7 @@ import subprocess
 from datetime import datetime, time
 from time import sleep
 import requests
+import sys
 
 
 def get_latest_release():
@@ -31,8 +32,10 @@ def check_zip_file(latest_tag):
 
     zip_file = f"{latest_tag}.zip"
     if not os.path.exists(zip_file):
-        print("yeah nigga")
-        #subprocess.run(['./updateApp.sh'])
+        if sys.platform.startswith('linux'):
+            subprocess.run(['./updateApp.sh'])
+        else:
+            print("Updating app...")
 
 
 def is_update_time():
@@ -56,7 +59,7 @@ def update_check_thread():
     """
 
     while True:
-        #if is_update_time():
-        latest_tag = get_latest_release()
-        check_zip_file(latest_tag)
+        if is_update_time():
+            latest_tag = get_latest_release()
+            check_zip_file(latest_tag)
         sleep(60)  # Update check interval (in seconds)
