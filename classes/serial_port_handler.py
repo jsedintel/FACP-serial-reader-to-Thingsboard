@@ -42,6 +42,7 @@ class SerialPortHandler:
             if not self.ser.is_open:
                 #self.logger.debug("Se intenta abrir el puerto serial")
                 self.ser.open()
+                self.queue.is_serial_connected = True
             message = OrderedDict([
                 ("ID_Cliente", self.config["cliente"]["id_cliente"]),
                 ("ID_Panel", self.config["cliente"]["id_panel"]),
@@ -77,25 +78,29 @@ class SerialPortHandler:
             self.logger.debug("La información parseada para el evento está vacía, saltanto publicar a MQTT.")
 
     def attempt_reconnection(self) -> None:
+        if_notified = False
         while True:
             try:
                 self.open_serial_port()
                 if self.ser.is_open:
+                    self.queue.is_serial_connected = True
                     break
             except Exception as e:
-                #self.logger.debug("Intentando reconectar serial...")
-                message = OrderedDict([
-                ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-                ("ID_Panel", self.config["cliente"]["id_panel"]),
-                ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-                ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-                ("Mensaje", "Fallo serial"),
-                ("Tipo", "Estado"),
-                ("Nivel_Severidad", 5),
-                ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-                ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-                ])
-                self.queue.put((PublishType.ESTADO, json.dumps(message)))
+                self.queue.is_serial_connected = False
+                if(not if_notified):
+                    message = OrderedDict([
+                    ("ID_Cliente", self.config["cliente"]["id_cliente"]),
+                    ("ID_Panel", self.config["cliente"]["id_panel"]),
+                    ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+                    ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
+                    ("Mensaje", "Fallo serial"),
+                    ("Tipo", "Estado"),
+                    ("Nivel_Severidad", 5),
+                    ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+                    ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
+                    ])
+                    self.queue.put((PublishType.ESTADO, json.dumps(message)))
+                    if_notified = True
                 time.sleep(3)
                 #self.logger.exception("Error encontrado intentando abrir el serial: ")
 

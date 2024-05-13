@@ -54,7 +54,7 @@ class MqttHandler:
                 ("ID_Panel", self.config["cliente"]["id_panel"]),
                 ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
                 ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-                ("Mensaje", "Conectado"),
+                ("Mensaje", "Conectado" if self.queue.is_serial_connected else "Fallo serial"),
                 ("Tipo", "Estado"),
                 ("Nivel_Severidad", 0),
                 ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
