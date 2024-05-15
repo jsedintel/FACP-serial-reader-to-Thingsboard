@@ -33,6 +33,9 @@ if [ ! -f "$latest_tag.zip" ]; then
   
   # Activate the virtual environment
   source .venv/bin/activate
+
+  #Update packages if something new appeared.
+  pip install -r requirements.txt
   
   # Build the executable using PyInstaller
   pyinstaller --onefile --add-data "config/logging_config.yml:config" main.py
