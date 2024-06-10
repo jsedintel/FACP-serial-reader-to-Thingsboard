@@ -1,3 +1,4 @@
+# mqtt_handler.py
 import paho.mqtt.client as mqtt
 from collections import OrderedDict
 from classes.enums import PublishType
@@ -12,6 +13,7 @@ class MqttHandler:
         self.client = None
         self.queue = queue
         self.logger = logging.getLogger(__name__)
+        self.attempt_count = 0  # Counter for connection attempts
 
     def connect(self) -> None:
         try:
@@ -20,8 +22,11 @@ class MqttHandler:
             self.client.tls_set()
             self.client.will_set(self._get_will_topic(), payload=self._get_will_message(), qos=2, retain=True)
             self.client.connect(self.config["mqtt"]["url"], self.config["mqtt"]["puerto"])
+            self.client.on_message = self.on_message
             self.client.loop_start()
-            self._publish_connected_message()
+            if self.client.is_connected():
+                self._publish_connected_message()
+                self.attempt_count = 0  # Reset attempt count after a successful connection
         except KeyError as e:
             raise KeyError(f"Error en la configuración: falta la clave {e}")
         except Exception as e:
@@ -33,6 +38,9 @@ class MqttHandler:
 
     def _get_will_topic(self) -> str:
         return f"{self.config['cliente']['id_cliente']}/FACP/{self.config['cliente']['id_panel']}/Estado"
+    
+    def on_message(self, client, userdata, msg):
+        self.logger.info(f"Mensaje recibido en el tópico {msg.topic}: {msg.payload}")
 
     def _get_will_message(self) -> str:
         return json.dumps(OrderedDict([
@@ -92,34 +100,38 @@ class MqttHandler:
 
     def _process_queue_messages(self) -> bool:
         while not self.queue.empty():
-            pub_type, message_data = self.queue.get()
-            try:
-                self._publish(message_data, pub_type)
-                self.logger.debug(f"Se publico un mensaje exitosamente al broker MQTT")
-            except ConnectionError as e:
-                self.logger.error(f"Se perdio la conexion mientras se publicaba, re-encolando el mensaje: {e}")
-                self.queue.put((pub_type, message_data))  # Vuelve a encolar el mensaje
-                self.client = None  # Set self.client to None to trigger reconnection
-                return False  # Senal para manejar la reconexion
-            except Exception as e:
-                self.logger.error(f"Un error desconocido ha ocurrido mientras se intentaba publicar el mensaje, re-encolando el mensaje: {e}")
-                self.queue.put((pub_type, message_data))
+            if not self.client.is_connected():
                 return False
+            else:
+                pub_type, message_data = self.queue.get()
+                try:
+                    self._publish(message_data, pub_type)
+                    self.logger.debug(f"Se publico un mensaje exitosamente al broker MQTT")
+                except ConnectionError as e:
+                    self.logger.error(f"Se perdio la conexion mientras se publicaba, re-encolando el mensaje: {e}")
+                    self.queue.put((pub_type, message_data))  # Vuelve a encolar el mensaje
+                    self.client = None  # Set self.client to None to trigger reconnection
+                    return False  # Senal para manejar la reconexion
+                except Exception as e:
+                    self.logger.error(f"Un error desconocido ha ocurrido mientras se intentaba publicar el mensaje, re-encolando el mensaje: {e}")
+                    self.queue.put((pub_type, message_data))
+                    return False
         return True
 
     def listen_to_mqtt(self) -> None:
         while True:
             try:
                 if self.client is None or not self.client.is_connected():
-                    self.logger.debug("Intentando conectar al broker MQTT")
+                    self.logger.debug(f"Intentando conectar al broker MQTT, intento #{self.attempt_count + 1}")
                     self.connect()
-                    time.sleep(1)
+                    self.attempt_count += 1
+                    time.sleep(min(60, 2 ** self.attempt_count))  # Exponential backoff up to a maximum of 60 seconds
                 if self.client is not None:
                     if not self._process_queue_messages():
                         self.logger.debug("Se perdio la conexion con el broker MQTT. Reiniciando conexion")
                         self.client = None  # Se resetea el cliente para activar la reconexion
-                if self.queue.empty():
-                    time.sleep(1)
+                    else:
+                        time.sleep(1)
             except Exception as e:
                 time.sleep(5)
                 self.logger.exception("Error inesperado ocurrido. Intentando conectar al broker MQTT de nuevo")
