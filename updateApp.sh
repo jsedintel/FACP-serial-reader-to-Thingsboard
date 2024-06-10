@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Change directory to /home/admin/Desktop/app
-cd /home/admin/Desktop/app
+cd /home/edintel/Desktop/app
 
 # Get the latest release information from the GitHub repository
 latest_release=$(curl -s https://api.github.com/repos/Andres10976/Serial_to_Mqtt_Gateway_for_FACP/releases/latest)
