@@ -14,6 +14,7 @@ class MqttHandler:
         self.queue = queue
         self.logger = logging.getLogger(__name__)
         self.attempt_count = 0  # Counter for connection attempts
+        self.is_connected = False
 
     def connect(self) -> None:
         try:
@@ -23,8 +24,10 @@ class MqttHandler:
             self.client.will_set(self._get_will_topic(), payload=self._get_will_message(), qos=2, retain=True)
             self.client.connect(self.config["mqtt"]["url"], self.config["mqtt"]["puerto"])
             self.client.on_message = self.on_message
+            self.client.on_connect = self.on_connect
+            self.client.on_disconnect = self.on_disconnect
             self.client.loop_start()
-            if self.client.is_connected():
+            if self.is_connected:
                 self._publish_connected_message()
                 self.attempt_count = 0  # Reset attempt count after a successful connection
         except KeyError as e:
@@ -41,6 +44,22 @@ class MqttHandler:
     
     def on_message(self, client, userdata, msg):
         self.logger.info(f"Mensaje recibido en el tópico {msg.topic}: {msg.payload}")
+
+    def on_connect(self, client, userdata, flags, reason_code, properties):
+        if reason_code == 0:
+            self.is_connected = True
+            self.logger.info("Conexión exitosa al broker MQTT")
+            self._publish_connected_message()
+            self.attempt_count = 0  # Reset attempt count after a successful connection
+        else:
+            self.logger.error(f"Falló la conexión al broker MQTT con código de error {reason_code}")
+
+    def on_disconnect(self, client, userdata, flags, reason_code, properties):
+        self.is_connected = False
+        self.logger.warning(f"Desconectado del broker MQTT con código de retorno {reason_code}")
+        if reason_code != 0:
+            self.logger.info("Desconexión inesperada, intentando reconectar...")
+        
 
     def _get_will_message(self) -> str:
         return json.dumps(OrderedDict([
@@ -69,7 +88,6 @@ class MqttHandler:
                 ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
             ]))
             self._publish(message, PublishType.ESTADO)
-            self.logger.debug("Se ha conectado al broker MQTT")
         except KeyError as e:
             raise KeyError(f"Error en la configuración: falta la clave {e}")
         except json.JSONDecodeError as e:
@@ -100,7 +118,7 @@ class MqttHandler:
 
     def _process_queue_messages(self) -> bool:
         while not self.queue.empty():
-            if not self.client.is_connected():
+            if not self.is_connected:
                 return False
             else:
                 pub_type, message_data = self.queue.get()
@@ -110,7 +128,6 @@ class MqttHandler:
                 except ConnectionError as e:
                     self.logger.error(f"Se perdio la conexion mientras se publicaba, re-encolando el mensaje: {e}")
                     self.queue.put((pub_type, message_data))  # Vuelve a encolar el mensaje
-                    self.client = None  # Set self.client to None to trigger reconnection
                     return False  # Senal para manejar la reconexion
                 except Exception as e:
                     self.logger.error(f"Un error desconocido ha ocurrido mientras se intentaba publicar el mensaje, re-encolando el mensaje: {e}")
@@ -121,7 +138,7 @@ class MqttHandler:
     def listen_to_mqtt(self) -> None:
         while True:
             try:
-                if self.client is None or not self.client.is_connected():
+                if self.client is None or not self.is_connected:
                     self.logger.debug(f"Intentando conectar al broker MQTT, intento #{self.attempt_count + 1}")
                     self.connect()
                     self.attempt_count += 1
