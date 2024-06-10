@@ -27,13 +27,14 @@ class MqttHandler:
             self.client.on_connect = self.on_connect
             self.client.on_disconnect = self.on_disconnect
             self.client.loop_start()
-            if self.is_connected:
-                self._publish_connected_message()
-                self.attempt_count = 0  # Reset attempt count after a successful connection
+            self._publish_connected_message()
+            self.attempt_count = 0  # Reset attempt count after a successful connection
+            self.is_connected = True
         except KeyError as e:
             raise KeyError(f"Error en la configuración: falta la clave {e}")
         except Exception as e:
-            self.logger.exception("Ha ocurrido un error inicializando la conexión MQTT, verifica los credenciales ingresados, así como los datos del broker.")
+            self.logger.error("Ha ocurrido un error inicializando la conexión MQTT, verifica los credenciales ingresados, así como los datos del broker.")
+            self.is_connected = False
             raise ConnectionError("Error al inicializar la conexión MQTT: " + str(e))
 
     def _get_client_id(self) -> str:
@@ -139,6 +140,9 @@ class MqttHandler:
         while True:
             try:
                 if self.client is None or not self.is_connected:
+                    if self.client is not None:
+                        self.client.loop_stop()
+                        self.client = None
                     self.logger.debug(f"Intentando conectar al broker MQTT, intento #{self.attempt_count + 1}")
                     self.connect()
                     self.attempt_count += 1
@@ -146,9 +150,12 @@ class MqttHandler:
                 if self.client is not None:
                     if not self._process_queue_messages():
                         self.logger.debug("Se perdio la conexion con el broker MQTT. Reiniciando conexion")
+                        self.client.loop_stop()
                         self.client = None  # Se resetea el cliente para activar la reconexion
                     else:
                         time.sleep(1)
             except Exception as e:
-                time.sleep(5)
-                self.logger.exception("Error inesperado ocurrido. Intentando conectar al broker MQTT de nuevo")
+                self.logger.debug(f"Desde Exception general, intentando conectar al broker MQTT, intento #{self.attempt_count + 1}")
+                self.attempt_count += 1
+                time.sleep(min(60, 2 ** self.attempt_count))
+                self.logger.error("Error inesperado ocurrido. Intentando conectar al broker MQTT de nuevo")
