@@ -30,6 +30,10 @@ if [ ! -f "$latest_tag.zip" ]; then
   
   # Remove the unzipped folder
   rm -rf "Serial_to_Mqtt_Gateway_for_FACP-$folder_name"
+
+  #Adds permissions to this user
+  sudo chown -R edintel:edintel ./
+  sudo chmod -R 755 ./
   
   # Activate the virtual environment
   source .venv/bin/activate
