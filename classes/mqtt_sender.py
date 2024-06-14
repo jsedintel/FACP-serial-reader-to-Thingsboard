@@ -27,7 +27,6 @@ class MqttHandler:
             self.client.on_connect = self.on_connect
             self.client.on_disconnect = self.on_disconnect
             self.client.loop_start()
-            self._publish_connected_message()
             self.attempt_count = 0  # Reset attempt count after a successful connection
             self.is_connected = True
         except KeyError as e:
