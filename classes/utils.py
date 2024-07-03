@@ -5,6 +5,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SafeQueue(queue.Queue):
+    def __init__(self, maxsize=0):
+        super().__init__(maxsize)
+        self.is_serial_connected = False
     def save_to_file(self, file_path):
         with self.mutex:
             with open(file_path, 'wb') as file:

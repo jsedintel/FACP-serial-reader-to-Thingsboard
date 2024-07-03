@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Change directory to /home/admin/Desktop/app
-cd /home/admin/Desktop/app
+cd /home/edintel/Desktop/app
 
 # Get the latest release information from the GitHub repository
 latest_release=$(curl -s https://api.github.com/repos/Andres10976/Serial_to_Mqtt_Gateway_for_FACP/releases/latest)
@@ -30,6 +30,10 @@ if [ ! -f "$latest_tag.zip" ]; then
   
   # Remove the unzipped folder
   rm -rf "Serial_to_Mqtt_Gateway_for_FACP-$folder_name"
+
+  #Adds permissions to this user
+  sudo chown -R edintel:edintel ./
+  sudo chmod -R 755 ./
   
   # Activate the virtual environment
   source .venv/bin/activate
