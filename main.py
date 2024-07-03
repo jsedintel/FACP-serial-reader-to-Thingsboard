@@ -5,8 +5,8 @@ from typing import Optional, Callable
 import threading
 import pickle
 import logging
+import logging.config
 import time
-from classes.logging_config import setup_logging
 from classes.specific_serial_handler import *
 from classes.mqtt_sender import MqttHandler
 from classes.utils import SafeQueue
@@ -16,12 +16,28 @@ import signal
 
 def resource_path(relative_path):
     try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
-
     return os.path.join(base_path, relative_path)
+
+def setup_logging(config_path):
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        logging.config.dictConfig(config)
+        print(f"Logging configuration loaded from {config_path}")
+    else:
+        logging.basicConfig(level=logging.DEBUG,  # Changed from INFO to DEBUG
+                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                            handlers=[
+                                logging.StreamHandler(),
+                                logging.FileHandler("app.log")
+                            ])
+        print(f"Logging configuration file not found at {config_path}. Using basic configuration.")
+    
+    # Ensure the root logger is set to DEBUG level
+    logging.getLogger().setLevel(logging.DEBUG)
 
 def is_platform_windows():
     return platform.system() == "Windows"
@@ -56,13 +72,14 @@ def load_queue_from_file(file_path: str, logger: logging.Logger) -> SafeQueue:
         return SafeQueue()
     except Exception as e:
         logger.error(f"Error inesperado cargando el queue: {e}")
-    
+    return queue
+
 def load_and_verify_yaml(file_name: str, verify_function: Callable[[dict], bool], logger: logging.Logger) -> Optional[dict]:
     data = {}
     try:
         with open(file_name, 'r') as yaml_file:
             data = yaml.safe_load(yaml_file)  
-        missing_keys =  verify_function(data)
+        missing_keys = verify_function(data)
         if missing_keys:
             logger.error(f"Error verificando el archivo: {file_name}. Faltan los siguientes valores: {missing_keys}")
             return None
@@ -74,10 +91,8 @@ def load_and_verify_yaml(file_name: str, verify_function: Callable[[dict], bool]
     except FileNotFoundError as e:
         logger.exception(f"El archivo {file_name} no se encontró: {e}")
     return None
-    
 
 def verify_config(config: dict) -> dict:
-    # Se define la estructur esperada de la configuracion
     required_structure = {
         "mqtt": {"usuario", "contrasena", "url", "puerto"},
         "serial": {"puerto", "baudrate", "bytesize", "parity", "stopbits", "xonxoff", "timeout"},
@@ -86,7 +101,6 @@ def verify_config(config: dict) -> dict:
 
     missing_keys = {}
 
-    # Se compara lo esperado junto con lo recibido
     for main_key, sub_keys in required_structure.items():
         if main_key not in config:
             missing_keys[main_key] = sub_keys
@@ -96,12 +110,10 @@ def verify_config(config: dict) -> dict:
         if missing_sub_keys:
             missing_keys[main_key] = missing_sub_keys
 
-    # Check if "coordenadas" attribute exists and has "latitud" and "longitud" keys as floats
     if "cliente" in config and "coordenadas" in config["cliente"]:
         coordenadas = config["cliente"]["coordenadas"]
         if not isinstance(coordenadas, dict) or "latitud" not in coordenadas or "longitud" not in coordenadas:
             missing_keys.setdefault("cliente", set()).add("coordenadas")
-
         else:
             latitud = coordenadas["latitud"]
             longitud = coordenadas["longitud"]
@@ -110,7 +122,6 @@ def verify_config(config: dict) -> dict:
 
     return missing_keys
 
-
 def verify_eventSeverityLevels(eventSeverityLevels: dict) -> dict:
     incorrect_entries = {}
     try:
@@ -118,7 +129,6 @@ def verify_eventSeverityLevels(eventSeverityLevels: dict) -> dict:
             if not isinstance(FACP, int):
                 raise KeyError("Codigo del panel invalido")
             for event_id, severity_level in events.items():
-                # Chequea si la severidad esta entre 0 y 2
                 if not isinstance(severity_level, int) or not 0 <= severity_level <= 6:
                     incorrect_entries[event_id] = severity_level
     except Exception as e:
@@ -127,18 +137,22 @@ def verify_eventSeverityLevels(eventSeverityLevels: dict) -> dict:
     return incorrect_entries
 
 def main():
-    path = os.path.join("config", "logging_config.yml")
-    setup_logging(resource_path(path))
-    logger = logging.getLogger(__name__)
+    config_path = resource_path(os.path.join("config", "logging_config.yml"))
+    setup_logging(config_path)
     
-    path = os.path.join("config", "config.yml")
+    logger = logging.getLogger(__name__)
+    logger.info("Logging initialized")
+
+    path = resource_path(os.path.join("config", "config.yml"))
     config = load_and_verify_yaml(path, verify_config, logger)
     if config is None:
+        logger.error("Failed to load config.yml")
         sys.exit(1)
 
-    path = os.path.join("config", 'eventSeverityLevels.yml')
+    path = resource_path(os.path.join("config", 'eventSeverityLevels.yml'))
     eventSeverityLevels = load_and_verify_yaml(path, verify_eventSeverityLevels, logger)
     if eventSeverityLevels is None:
+        logger.error("Failed to load eventSeverityLevels.yml")
         sys.exit(2)
     
     momevents_queue = load_queue_from_file("queue.picke", logger)
@@ -157,25 +171,22 @@ def main():
     except Exception as e:
         logger.error("El modelo de panel especificado no fue encontrado. Verifica el nombre ingresado y si el fACP está soportado")
         close_program()
-    #Acá se decide qué parseador usar acorde al panel
+
     match config['cliente']['id_modelo_panel']:
-        case 10001: #Edwards iO1000
+        case 10001:
             serial_handler = Edwards_iO1000(config, severity_list, momevents_queue)
-        case 10002: #Edwards EST3x
+        case 10002:
             serial_handler = Edwards_EST3x(config, severity_list, momevents_queue)
-        case 10003: #Notifier NFS320
+        case 10003:
             serial_handler = Notifier_NFS320(config, severity_list, momevents_queue)
         case _:
             logger.error("El modelo de panel especificado no fue encontrado. Verifica el nombre ingresado y si el fACP está soportado")
             close_program()
 
-    
-
     serial_thread = threading.Thread(target=serial_handler.listening_to_serial, args=())
     mqtt_thread = threading.Thread(target=mqtt_handler.listen_to_mqtt, args=())
     updates_thread = threading.Thread(target=update_check_thread, args=())
     
-    # Set daemon flag to True for both threads
     serial_thread.daemon = True
     mqtt_thread.daemon = True
     updates_thread.daemon = True
@@ -186,7 +197,6 @@ def main():
 
     try:
         while True:
-            # Check if either thread has died
             if not serial_thread.is_alive() or not mqtt_thread.is_alive() or not updates_thread.is_alive():
                 logger.error("One of the threads has died. Terminating the application.")
                 close_program()
@@ -194,9 +204,8 @@ def main():
             time.sleep(5)
             save_queue_to_file(momevents_queue, "queue.picke")
     except KeyboardInterrupt:
-        print("Programa terminado por el usuario")
+        logger.info("Programa terminado por el usuario")
         close_program()
-        
 
 if __name__ == "__main__":
     main()

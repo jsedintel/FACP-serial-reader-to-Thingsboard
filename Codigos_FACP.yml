@@ -18,4 +18,4 @@ Notifier configuracion general:
   xonxoff: True
   timeout: 1
 
-Notifier_NFS320: 10003
+Notifier_NFS320/Notifier_NFS640: 10003
