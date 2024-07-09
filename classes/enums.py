@@ -1,6 +1,16 @@
-from enum import Enum
+from enum import Enum, auto
 
 class PublishType(Enum):
-    EVENTO = 1
-    REPORTE = 2
-    ESTADO = 3
+    EVENTO = auto()
+    REPORTE = auto()
+    ESTADO = auto()
+
+class SeverityLevel(Enum):
+    NOTIFICACION = 1
+    MEDIO = 2
+    SEVERO = 6
+
+class PanelModel(Enum):
+    EDWARDS_IO1000 = 10001
+    EDWARDS_EST3X = 10002
+    NOTIFIER_NFS320 = 10003

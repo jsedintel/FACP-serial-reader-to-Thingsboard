@@ -1,19 +1,20 @@
 import serial
-from classes.utils import SafeQueue
-from typing import Tuple
+from utils.queue_operations import SafeQueue
+from typing import Tuple, Dict, Any, OrderedDict
 from classes.enums import PublishType
 from collections import OrderedDict
 import time
 import json
 import logging
-import datetime
+from datetime import datetime
+import threading
 
 class SerialPortHandler:
-    def __init__(self, config: dict, eventSeverityLevels: dict, queue: SafeQueue):
+    def __init__(self, config: Dict[str, Any], eventSeverityLevels: Dict[str, int], queue: SafeQueue):
         self.config = config
         self.queue = queue
         self.eventSeverityLevels = eventSeverityLevels
-        self.ser = None
+        self.ser: serial.Serial | None = None
         self.logger = logging.getLogger(__name__)
         self.report_delimiter = ""
         self.max_report_delimiter_count = -1
@@ -22,25 +23,26 @@ class SerialPortHandler:
             'even': serial.PARITY_EVEN,
             'odd': serial.PARITY_ODD
         }
+        self.attempt = 0
+        self.max_reconnect_delay = 60  # Maximum delay between reconnection attempts (in seconds)
+        self.base_delay = 1
 
     def init_serial_port(self) -> None:
-        # Inicializa el puerto serial
-        self.ser = serial.Serial()
-        self.ser.port=self.config["serial"]["puerto"]
-        self.ser.baudrate=self.config["serial"]["baudrate"]
-        self.ser.bytesize=self.config["serial"]["bytesize"]
-        self.ser.parity=self.parity_dic[self.config["serial"]["parity"]]
-        self.ser.stopbits=self.config["serial"]["stopbits"]
-        self.ser.xonxoff=self.config["serial"]["xonxoff"]
-        self.ser.timeout=self.config["serial"]["timeout"]
+        self.ser = serial.Serial(
+            port=self.config["serial"]["puerto"],
+            baudrate=self.config["serial"]["baudrate"],
+            bytesize=self.config["serial"]["bytesize"],
+            parity=self.parity_dic[self.config["serial"]["parity"]],
+            stopbits=self.config["serial"]["stopbits"],
+            xonxoff=self.config["serial"]["xonxoff"],
+            timeout=self.config["serial"]["timeout"]
+        )
 
     def open_serial_port(self) -> None:
-        if self.ser is None:
-                self.init_serial_port()
-                #self.logger.debug("Se inicializa los datos del serial")
         try:
+            if self.ser is None:
+                self.init_serial_port()
             if not self.ser.is_open:
-                #self.logger.debug("Se intenta abrir el puerto serial")
                 self.ser.open()
                 self.queue.is_serial_connected = True
             message = OrderedDict([
@@ -55,66 +57,71 @@ class SerialPortHandler:
                 ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
             ])
             self.queue.put((PublishType.ESTADO, json.dumps(message)))
-            self.logger.debug("Serial conectado")
+            self.logger.debug("Serial connected")
                 
-        except Exception as e:
-            #self.logger.exception("Ocurrió un error inesperado abriendo el puerto especificado.")
-            raise serial.SerialException(str(e))
+        except serial.SerialException as e:
+            raise serial.SerialException(f"An error occurred while opening the specified port: {e}")
         
-    def publish_parsed_report(self, buffer: dict) -> None:
+    def publish_parsed_report(self, buffer: str) -> None:
         parsed_data = self.parse_string_report(buffer)
         if parsed_data is not None:
-            #self.logger.debug("Reporte parseado")
             self.queue.put((PublishType.REPORTE, json.dumps(parsed_data)))
         else:
-            self.logger.warning("Reporte en blanco parseado")
+            self.logger.warning("Empty report parsed")
 
     def publish_parsed_event(self, buffer: str) -> None:
         parsed_data = self.parse_string_event(buffer)
         if parsed_data is not None:
-            #self.logger.debug("Evento parseado")
             self.queue.put((PublishType.EVENTO, json.dumps(parsed_data)))
         else:
-            self.logger.debug("La información parseada para el evento está vacía, saltanto publicar a MQTT.")
+            self.logger.debug("The parsed event information is empty, skipping MQTT publish.")
 
-    def attempt_reconnection(self) -> None:
+    def attempt_reconnection(self, shutdown_flag: threading.Event) -> None:
         if_notified = False
-        while True:
+        while not shutdown_flag.is_set():
             try:
                 self.open_serial_port()
-                if self.ser.is_open:
+                if self.ser and self.ser.is_open:
                     self.queue.is_serial_connected = True
+                    self.attempt = 1
                     break
             except Exception as e:
                 self.queue.is_serial_connected = False
-                if(not if_notified):
+                if not if_notified:
                     message = OrderedDict([
-                    ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-                    ("ID_Panel", self.config["cliente"]["id_panel"]),
-                    ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-                    ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-                    ("Mensaje", "Fallo serial"),
-                    ("Tipo", "Estado"),
-                    ("Nivel_Severidad", 5),
-                    ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-                    ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
+                        ("ID_Cliente", self.config["cliente"]["id_cliente"]),
+                        ("ID_Panel", self.config["cliente"]["id_panel"]),
+                        ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
+                        ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
+                        ("Mensaje", "Fallo serial"),
+                        ("Tipo", "Estado"),
+                        ("Nivel_Severidad", 5),
+                        ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
+                        ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
                     ])
                     self.queue.put((PublishType.ESTADO, json.dumps(message)))
                     if_notified = True
-                time.sleep(3)
-                #self.logger.exception("Error encontrado intentando abrir el serial: ")
+                
+                delay = min(self.base_delay * (2 ** self.attempt), self.max_reconnect_delay)
+                self.logger.error(f"Error found trying to open serial: {e}. Retrying in {delay} seconds.")
+                time.sleep(delay)
+                self.attempt += 1
+            if shutdown_flag.wait(delay):
+                    break
 
     def close_serial_port(self) -> None:
         if self.ser and self.ser.is_open:
             self.ser.close()
-            #self.logger.debug("Puerto serial cerrado.")
 
-    def process_incoming_data(self) -> None:
+    def process_incoming_data(self, shutdown_flag: threading.Event) -> None:
         buffer = ""
         report_count = 0
 
+        if self.ser is None:
+            raise ValueError("Serial port is not initialized")
+
         try:
-            while True:
+            while not shutdown_flag.is_set():
                 if self.ser.in_waiting > 0:
                     raw_data = self.ser.readline()
                     incoming_line = raw_data.decode('latin-1').strip()
@@ -128,17 +135,16 @@ class SerialPortHandler:
                 else:
                     time.sleep(0.1)
         except (serial.SerialException, serial.SerialTimeoutException) as e:
-            raise serial.Exception(str(e))
+            raise serial.SerialException(str(e))
         except (TypeError, UnicodeDecodeError) as e:
-            if buffer != "":
+            if buffer:
                 if report_count > 0:
                     self.publish_parsed_report(buffer)
                 else:
                     self.publish_parsed_event(buffer)
             raise TypeError(str(e))
         except Exception as e:
-            #self.logger.exception("Fallo inesperado ocurrido: ")
-            raise Exception(str(e))
+            raise Exception(f"Unexpected failure occurred: {str(e)}")
 
     def handle_data_line(self, incoming_line: str, buffer: str, report_count: int) -> Tuple[str, int]:
         if self.report_delimiter in incoming_line:
@@ -156,10 +162,9 @@ class SerialPortHandler:
         else:
             return False
 
-    def parse_string_event(self,event: str) -> OrderedDict:
-        "Se implementa el parseo de los eventos"
-        self.logger.error("La funcion 'parse_string_event' se debe implementar!")
-        pass
+    def parse_string_event(self, event: str) -> OrderedDict | None:
+        self.logger.error("The 'parse_string_event' function must be implemented!")
+        return None
 
     def parse_string_report(self, report: str) -> OrderedDict:
         report_data = OrderedDict([
@@ -176,19 +181,19 @@ class SerialPortHandler:
         
         return report_data
 
-    def listening_to_serial(self) -> None:
-        while True:
+    def listening_to_serial(self, shutdown_flag: threading.Event) -> None:
+        while not shutdown_flag.is_set():
             try:
                 self.open_serial_port()
-                #logger.debug("Se abrio el puerto exitosamente")
-                self.process_incoming_data()
+                self.process_incoming_data(shutdown_flag)
             except (serial.SerialException, serial.SerialTimeoutException) as e:
-                self.logger.error("Perdida de la conexion serial.")
-                self.attempt_reconnection()
+                self.logger.error(f"Lost serial connection: {e}")
+                self.attempt_reconnection(shutdown_flag)
             except (TypeError, UnicodeDecodeError) as e:
-                self.logger.exception("Error ocurrido, caracter extranio encontrado. Reiniciando el serial")
-                self.ser.reset_input_buffer()
+                self.logger.error(f"Error occurred, strange character found. Resetting the serial: {e}")
+                if self.ser:
+                    self.ser.reset_input_buffer()
             except Exception as e:
                 self.close_serial_port()
-                self.logger.error(f"Ha ocurrido un error inesperado: {str(e)}")
+                self.logger.error(f"An unexpected error has occurred: {str(e)}")
                 time.sleep(1)

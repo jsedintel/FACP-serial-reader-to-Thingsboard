@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 *.picke
+*.pkl
 **/__pycache__
 **/config.yml
 
