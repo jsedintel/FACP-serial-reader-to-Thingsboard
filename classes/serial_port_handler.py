@@ -112,6 +112,8 @@ class SerialPortHandler:
     def close_serial_port(self) -> None:
         if self.ser and self.ser.is_open:
             self.ser.close()
+            
+        self.logger.warning("Serial port closed")
 
     def process_incoming_data(self, shutdown_flag: threading.Event) -> None:
         buffer = ""
@@ -197,3 +199,4 @@ class SerialPortHandler:
                 self.close_serial_port()
                 self.logger.error(f"An unexpected error has occurred: {str(e)}")
                 time.sleep(1)
+        self.close_serial_port()

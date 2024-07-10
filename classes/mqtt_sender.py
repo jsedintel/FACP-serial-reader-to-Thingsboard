@@ -35,6 +35,18 @@ class MqttHandler:
             self.logger.error("An error occurred initializing the MQTT connection. Verify the credentials and broker data.")
             self.is_connected = False
             raise ConnectionError(f"Error initializing MQTT connection: {e}")
+        
+    def disconnect(self) -> None:
+        if self.client and self.is_connected:
+            try:
+                # Publish the last will message before disconnecting
+                self._publish(self._get_will_message(), PublishType.ESTADO)
+                self.client.disconnect()
+                self.client.loop_stop()
+                self.is_connected = False
+                self.logger.info("Successfully disconnected from MQTT broker")
+            except Exception as e:
+                self.logger.error(f"Error disconnecting from MQTT broker: {e}")
 
     def _get_client_id(self) -> str:
         return f"{self.config['cliente']['id_cliente']}_{self.config['cliente']['id_panel']}_FACP"
@@ -164,5 +176,4 @@ class MqttHandler:
                 self.logger.error(f"Unexpected error occurred. Attempting to connect to MQTT broker again: {e}")
         
         if self.client:
-            self.client.loop_stop()
-            self.client.disconnect()
+            self.disconnect()
