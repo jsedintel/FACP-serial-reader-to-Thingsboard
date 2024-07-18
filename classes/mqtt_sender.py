@@ -115,6 +115,8 @@ class MqttHandler:
                 return f"{base_topic}/Reportes"
             case PublishType.ESTADO:
                 return f"{base_topic}/Estado"
+            case PublishType.PANEL:
+                return f"{base_topic}/Panel"
             case _:
                 raise ValueError("Invalid publication type entered")
 
@@ -124,7 +126,7 @@ class MqttHandler:
         try:
             topic = self._get_publish_topic(pub_type)
             qos = 2
-            retain = pub_type == PublishType.ESTADO
+            retain = pub_type == PublishType.ESTADO or pub_type == PublishType.PANEL
             self.client.publish(topic, message, qos=qos, retain=retain)
             self.logger.debug("Successfully published a message to the MQTT broker")
         except Exception as e:

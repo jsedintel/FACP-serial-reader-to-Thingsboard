@@ -4,6 +4,7 @@ class PublishType(Enum):
     EVENTO = auto()
     REPORTE = auto()
     ESTADO = auto()
+    PANEL = auto()
 
 class SeverityLevel(Enum):
     NOTIFICACION = 1

@@ -31,8 +31,18 @@ class RelayConfig(BaseModel):
     high_time: int
     low_time: int
 
+class RelayMonitorConfig(BaseModel):
+    alarm_pin: int
+    trouble_pin: int
+    supervision_pin: int
+
+class TestingConfig(BaseModel):
+    use_mock_gpio: bool
+
 class ConfigSchema(BaseModel):
     mqtt: MqttConfig
     serial: SerialConfig
     cliente: ClientConfig
     relay: RelayConfig
+    relay_monitor: RelayMonitorConfig
+    testing: TestingConfig

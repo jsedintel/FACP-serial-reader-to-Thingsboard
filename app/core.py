@@ -8,8 +8,10 @@ from components.update_app import update_check_thread
 from components.relay_controller import RelayController
 from components.queue_manager import QueueManager
 from components.thread_manager import ThreadManager
+from classes.relay_monitor import RelayMonitor
 
 class Application:
+
     def __init__(self, config: ConfigSchema, event_severity_levels: dict):
         self.config = config
         self.event_severity_levels = event_severity_levels
@@ -20,7 +22,9 @@ class Application:
 
         self.queue_manager = QueueManager(self.queue, "queue_backup.pkl")
         self.relay_controller = RelayController(config.relay)
+        self.relay_monitor = RelayMonitor(config.model_dump(), self.queue)
         self.thread_manager = ThreadManager(self.shutdown_flag)
+        
 
     def _create_serial_handler(self):
         id_modelo_panel = self.config.cliente.id_modelo_panel
@@ -46,6 +50,7 @@ class Application:
             threading.Thread(target=self.mqtt_handler.listen_to_mqtt, args=(self.shutdown_flag,)),
             threading.Thread(target=update_check_thread, args=(self.shutdown_flag,)),
             threading.Thread(target=self.queue_manager.save_queue_periodically, args=(self.shutdown_flag,)),
+            threading.Thread(target=self.relay_monitor.monitor_relays, args=(self.shutdown_flag,)),
         ]
 
         if self.relay_controller.is_raspberry_pi:
@@ -66,4 +71,5 @@ class Application:
         self.thread_manager.stop_threads()
         self.queue_manager.save_queue()
         self.relay_controller.cleanup()
+        self.relay_monitor.cleanup()  
         logging.info("Graceful shutdown completed")
