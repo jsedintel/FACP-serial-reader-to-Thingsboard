@@ -1,0 +1,40 @@
+#After filling up the config, change the name back to config.yml
+#Componentes respectivos a MQTT
+mqtt:
+  usuario: dummy
+  contrasena: data
+  url: godchrist.mqtt.broker
+  puerto: 8883
+#Componentes respectivos a serial
+serial:
+  #Puerto correspondiente en el que se conectara el USB
+  puerto: COM3
+  #De aqui en adelante es probable que no se deban modificar, a menos de que los intruyan a hacerlo
+  baudrate: 9600
+  bytesize: 7
+  parity: even
+  stopbits: 1
+  xonxoff: True
+  timeout: 1
+#Componentes respectivos a la informacion del cliente y del dispositivo
+cliente:
+  id_cliente: PC_Test
+  id_panel: 1
+  modelo_panel: Notifier NFS320
+  id_modelo_panel: 10003
+  coordenadas:
+    latitud: 9.929289
+    longitud: -84.104287
+#Componentes respectivos al control del relay del Test Alive
+relay:
+  pin: 8
+  high_time: 5
+  low_time: 5
+#Componentes respectivos al control de la lectura de relays de los estados del panel
+relay_monitor:
+  alarm_pin: 17
+  trouble_pin: 27
+  supervision_pin: 22
+#Si se va a simular el GPIO en caso de correr el programa en cualquier dispositivo que no sea una RPi
+testing:
+  use_mock_gpio: true
