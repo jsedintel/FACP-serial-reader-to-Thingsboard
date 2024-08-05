@@ -1,8 +1,9 @@
 import threading
 import logging
+from config.schema import RelayConfig
 
 class RelayController:
-    def __init__(self, relay_config):
+    def __init__(self, relay_config: RelayConfig):
         self.relay_pin = relay_config.pin
         self.relay_high_time = relay_config.high_time
         self.relay_low_time = relay_config.low_time

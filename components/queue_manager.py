@@ -1,10 +1,11 @@
 import threading
 from utils.file_operations import save_to_file, load_from_file
+from typing import List, Any
 import logging
-import os
+from utils.queue_operations import SafeQueue
 
 class QueueManager:
-    def __init__(self, queue, queue_file_path):
+    def __init__(self, queue: SafeQueue, queue_file_path: str):
         self.queue = queue
         self.queue_file_path = queue_file_path
 
@@ -17,9 +18,18 @@ class QueueManager:
     def save_queue(self):
         save_to_file(list(self.queue.queue), self.queue_file_path)
 
-    def load_queue(self):
-        if os.path.exists(self.queue_file_path):
-            loaded_queue = load_from_file(self.queue_file_path)
-            for item in loaded_queue:
-                self.queue.put(item)
-            logging.info(f"Loaded {len(loaded_queue)} items from queue backup")
+    def load_from_file(self, file_path: str) -> None:
+        with self.mutex:
+            try:
+                items: List[Any] = load_from_file(file_path)
+                for item in items:
+                    self.put(item)
+            except FileNotFoundError:
+                logging.warning(f"File {file_path} not found. Creating a new queue.")
+            except EOFError:
+                logging.debug("No pending events or reports")
+            except (logging.UnpicklingError, AttributeError) as e:
+                logging.error(f"Error unpickling queue data: {e}")
+            except Exception as e:
+                logging.error(f"Unexpected error loading queue: {e}")
+                raise 

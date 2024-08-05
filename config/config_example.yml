@@ -1,35 +1,31 @@
-#After filling up the config, change the name back to config.yml
-#Componentes respectivos a MQTT
-mqtt:
-  usuario: dummy
-  contrasena: data
-  url: godchrist.mqtt.broker
-  puerto: 8883
+#Componentes respectivos a Thingsboard
+thingsboard:
+  device_token: YOUR_DEVICE_TOKEN
+  host: YOUR_THINGSBOARD_HOST
+  port: YOUR_THINGSBOARD_PORT
 #Componentes respectivos a serial
 serial:
   #Puerto correspondiente en el que se conectara el USB
   puerto: COM3
   #De aqui en adelante es probable que no se deban modificar, a menos de que los intruyan a hacerlo
   baudrate: 9600
-  bytesize: 7
-  parity: even
+  bytesize: 8
+  parity: none
   stopbits: 1
-  xonxoff: True
+  xonxoff: False
   timeout: 1
 #Componentes respectivos a la informacion del cliente y del dispositivo
 cliente:
-  id_cliente: PC_Test
-  id_panel: 1
+  RPi: local_test #Nombre de la Pi en la que el programa va a correr.
+  id_panel: Test_FACP
   modelo_panel: Notifier NFS320
   id_modelo_panel: 10003
-  coordenadas:
-    latitud: 9.929289
-    longitud: -84.104287
 #Componentes respectivos al control del relay del Test Alive
 relay:
   pin: 8
   high_time: 5
   low_time: 5
+  publish_interval: 60
 #Componentes respectivos al control de la lectura de relays de los estados del panel
 relay_monitor:
   alarm_pin: 17

@@ -1,20 +1,20 @@
 #ID_Panel, Evento y su respectivo nivel de severidad
 #ID_panel:
 #- Eventos: Nvl_Severidad
-#Severidad 6: Severo
+#Severidad 3: Severo
 #Severidad 2: Medio
 #Severidad 1: Notificacion
 
 10001:
-  HUMO ACT: 6
-  CALOR ACT: 6
-  DUCTO ACT: 6
-  EST MAN ACT: 6
-  FLUJ ACT: 6
-  COAL ACT: 6
-  ALRM ACT: 6
-  Est.Manu: 6
-  ACT ALRM: 6
+  HUMO ACT: 3
+  CALOR ACT: 3
+  DUCTO ACT: 3
+  EST MAN ACT: 3
+  FLUJ ACT: 3
+  COAL ACT: 3
+  ALRM ACT: 3
+  Est.Manu: 3
+  ACT ALRM: 3
   COSU ACT: 2
   SUPV ACT: 2
   COMO ACT: 2
@@ -26,11 +26,11 @@
   FALL ACT: 1
   DESH ACT: 1
   PRBA ACT: 1
-  SMK ACT: 6
-  HEAT ACT: 6
-  DUCT ACT: 6
-  PULL ACT: 6
-  WFLW ACT: 6
+  SMK ACT: 3
+  HEAT ACT: 3
+  DUCT ACT: 3
+  PULL ACT: 3
+  WFLW ACT: 3
   PROB ACT: 2
   Outputs are latched: 2
   TRBL ACT: 1
@@ -68,9 +68,9 @@
   AVER. LOCAL ACT.: 2
   AVERIA ABIER.ACT: 2
   MNTR LOCAL ACT.: 2
-  PULSADOR ACTIVO: 6
+  PULSADOR ACTIVO: 3
   AVER.COMUN ACT.: 2
-  ALARMA ACTIVA: 6
+  ALARMA ACTIVA: 3
   ALARMA RESTAUR.: 1
   PULSADOR REST.: 1
   AVER. LOCAL REST: 1
@@ -86,7 +86,7 @@
   APG: 1
   CAMBIO PROGRAMA: 2
   CONFIRMAR: 2
-  ALARM: 6
+  ALARM: 3
   SENAL SILENCIADA: 2
   AVERIA CONTROL: 2
   AVERIA EN SISTEMA: 2

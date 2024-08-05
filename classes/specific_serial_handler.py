@@ -1,12 +1,11 @@
-from collections import OrderedDict
 from datetime import datetime
-from numpy import random
 from classes.serial_port_handler import SerialPortHandler
 from utils.queue_operations import SafeQueue
 import re
 import time
 import serial
 from typing import Dict, Any
+import threading
 
 class Specific_Serial_Handler_Template(SerialPortHandler):
     def __init__(self, config: Dict[str, Any], eventSeverityLevels: Dict[str, int], queue: SafeQueue):
@@ -14,7 +13,7 @@ class Specific_Serial_Handler_Template(SerialPortHandler):
         self.report_delimiter = "Set the delimiter"
         self.max_report_delimiter_count = 4
 
-    def parse_string_event(self, event: str) -> OrderedDict | None:
+    def parse_string_event(self, event: str) -> Dict[str, Any] | None:
         # Implement the parsing logic here
         pass
 
@@ -24,8 +23,7 @@ class Edwards_iO1000(SerialPortHandler):
         self.report_delimiter = "-----------------"
         self.max_report_delimiter_count = 4
 
-    def parse_string_event(self, event: str) -> OrderedDict | None:
-        metadata = ""
+    def parse_string_event(self, event: str) -> Dict[str, Any] | None:
         try:
             lines = list(filter(None, event.strip().split('\n')))
             if not lines:
@@ -39,33 +37,23 @@ class Edwards_iO1000(SerialPortHandler):
 
             ID_Event = primary_data[0].strip()
             time_date_metadata = primary_data[1].strip().split()
-            Fecha_Panel = f"{time_date_metadata[0]} {time_date_metadata[1]}"
+            FACP_date = f"{time_date_metadata[0]} {time_date_metadata[1]}"
 
-            metadata = " | ".join(time_date_metadata[2:])
-
+            description = " | ".join(time_date_metadata[2:])
             if len(lines) > 1:
-                metadata += "\n" + "\n".join(lines[1:])
+                description += "\n" + "\n".join(lines[1:])
+
+            return {
+                "event": ID_Event,
+                "description": description,
+                "severity": self.eventSeverityLevels.get(ID_Event, self.default_event_severity_not_recognized),
+                "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "FACP_date": FACP_date
+            }
 
         except Exception as e:
             self.logger.exception(f"An error occurred while parsing the event: {event}")
             return None
-
-        event_data = OrderedDict([
-            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-            ("ID_Panel", self.config["cliente"]["id_panel"]),
-            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-            ("Mensaje", ID_Event),
-            ("Tipo", "Evento"),
-            ("Nivel_Severidad", self.eventSeverityLevels.get(ID_Event, self.default_event_severity_not_recognized)),
-            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
-            ("Fecha_Panel", Fecha_Panel),
-            ("Metadata", metadata),
-            ("uniq", random.rand()),
-            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-        ])
-        return event_data
 
 class Edwards_EST3x(SerialPortHandler):
     def __init__(self, config: Dict[str, Any], eventSeverityLevels: Dict[str, int], queue: SafeQueue):
@@ -74,8 +62,7 @@ class Edwards_EST3x(SerialPortHandler):
         self.max_report_delimiter_count = 2
         self.end_report_delimiter = "**"
 
-    def parse_string_event(self, event: str) -> OrderedDict | None:
-        metadata = ""
+    def parse_string_event(self, event: str) -> Dict[str, Any] | None:
         try:
             lines = list(filter(None, event.strip().split('\n')))
             if not lines:
@@ -89,33 +76,23 @@ class Edwards_EST3x(SerialPortHandler):
 
             ID_Event = primary_data[0].strip()
             time_date_metadata = primary_data[1].strip().split()
-            Fecha_Panel = f"{time_date_metadata[0]} {time_date_metadata[1]}"
+            FACP_date = f"{time_date_metadata[0]} {time_date_metadata[1]}"
 
-            metadata = " | ".join(time_date_metadata[2:])
-
+            description = " | ".join(time_date_metadata[2:])
             if len(lines) > 1:
-                metadata += "\n" + "\n".join(lines[1:])
+                description += "\n" + "\n".join(lines[1:])
+
+            return {
+                "event": ID_Event,
+                "description": description,
+                "severity": self.eventSeverityLevels.get(ID_Event, self.default_event_severity_not_recognized),
+                "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "FACP_date": FACP_date
+            }
 
         except Exception as e:
             self.logger.exception(f"An error occurred while parsing the event: {event}")
             return None
-
-        event_data = OrderedDict([
-            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-            ("ID_Panel", self.config["cliente"]["id_panel"]),
-            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-            ("Mensaje", ID_Event),
-            ("Tipo", "Evento"),
-            ("Nivel_Severidad", self.eventSeverityLevels.get(ID_Event, self.default_event_severity_not_recognized)),
-            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
-            ("Fecha_Panel", Fecha_Panel),
-            ("Metadata", metadata),
-            ("uniq", random.rand()),
-            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-        ])
-        return event_data
 
     def check_last_line(self, string: str) -> bool:
         last_newline = string.rfind('\n', 0, string.rfind('\n'))
@@ -142,9 +119,7 @@ class Notifier_NFS320(SerialPortHandler):
         self.report_delimiter = "************"
         self.max_report_delimiter_count = 2
 
-    def parse_string_event(self, event: str) -> OrderedDict | None:
-        metadata = ""
-        severity = -1
+    def parse_string_event(self, event: str) -> Dict[str, Any] | None:
         try:
             lines = list(filter(None, event.strip().split('\n')))
             if not lines:
@@ -155,40 +130,33 @@ class Notifier_NFS320(SerialPortHandler):
             if len(primary_data) < 2:
                 self.logger.error(f"Invalid event received: {event}")
                 return None
-            if ":" in primary_data[0].strip():
-                severity = 6
+
             ID_Event = primary_data[0].strip()
-            metadata = ' / '.join(primary_data[1:]).strip()
+            description = ' / '.join(primary_data[1:]).strip()
 
             if len(lines) > 1:
-                metadata += "\n" + "\n".join(lines[1:])
+                description += "\n" + "\n".join(lines[1:])
+
+            severity = 6 if ":" in ID_Event else self.eventSeverityLevels.get(ID_Event, self.default_event_severity_not_recognized)
+
+            return {
+                "event": ID_Event,
+                "description": description,
+                "severity": severity,
+                "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "FACP_date": ""  # Notifier_NFS320 doesn't provide a panel date
+            }
 
         except Exception as e:
             self.logger.exception(f"An error occurred while parsing the event: {event}")
             return None
-
-        event_data = OrderedDict([
-            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-            ("ID_Panel", self.config["cliente"]["id_panel"]),
-            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-            ("Mensaje", ID_Event),
-            ("Tipo", "Evento"),
-            ("Nivel_Severidad", severity if severity == 6 else self.eventSeverityLevels.get(ID_Event, self.default_event_severity_not_recognized)),
-            ("Fecha_SBC", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")),
-            ("Metadata", metadata),
-            ("uniq", random.rand()),
-            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-        ])
-        return event_data
     
-    def process_incoming_data(self) -> None:
+    def process_incoming_data(self, shutdown_flag: threading.Event) -> None:
         buffer = ""
         report_count = 0
         add_blank_line = False
         try:
-            while True:
+            while not shutdown_flag.is_set():
                 if self.ser and (self.ser.in_waiting > 0 or add_blank_line):
                     if add_blank_line:
                         add_blank_line = False  

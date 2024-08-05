@@ -1,9 +1,11 @@
 import logging
 import time
+import threading
+from typing import List 
 
 class ThreadManager:
-    def __init__(self, shutdown_flag):
-        self.threads = []
+    def __init__(self, shutdown_flag: threading.Event):
+        self.threads: List[threading.Thread] = []
         self.shutdown_flag = shutdown_flag
 
     def start_threads(self, threads):
@@ -15,14 +17,17 @@ class ThreadManager:
     def stop_threads(self):
         self.shutdown_flag.set()
         for thread in self.threads:
-            thread.join(timeout=10)  # Increased timeout for graceful shutdown
+            thread.join(timeout=20)
         
-        # Check if any threads are still alive
-        still_alive = [thread for thread in self.threads if thread.is_alive()]
-        if still_alive:
-            logging.warning(f"{len(still_alive)} threads did not shut down gracefully")
-            for thread in still_alive:
-                logging.warning(f"Thread {thread.name} is still running")
+        # Force terminate any threads that didn't stop gracefully
+        for thread in self.threads:
+            if thread.is_alive():
+                logging.warning(f"Thread {thread.name} did not stop gracefully. Attempting to terminate.")
+                try:
+                    if hasattr(thread, '_stop'):
+                        thread._stop()
+                except:
+                    logging.error(f"Failed to forcefully terminate thread {thread.name}")
 
     def monitor_threads(self):
         while not self.shutdown_flag.is_set():

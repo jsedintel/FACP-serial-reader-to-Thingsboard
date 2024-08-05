@@ -1,181 +1,95 @@
 import paho.mqtt.client as mqtt
-from collections import OrderedDict
-from classes.enums import PublishType
 from utils.queue_operations import SafeQueue
 import json
 import logging
 from typing import Dict, Any
 import threading
+import time
+from classes.enums import PublishType
+from config.schema import ConfigSchema
 
 class MqttHandler:
-    def __init__(self, config: Dict[str, Any], queue: SafeQueue):
+    def __init__(self, config: ConfigSchema, queue: SafeQueue):
         self.config = config
-        self.client: mqtt.Client | None = None
+        self.client = None
         self.queue = queue
         self.logger = logging.getLogger(__name__)
-        self.attempt_count = 0
         self.is_connected = False
+        self.reconnect_interval = 5
+        self.device_token = config.thingsboard.device_token
+        self.tb_host = config.thingsboard.host
+        self.tb_port = config.thingsboard.port
 
-    def connect(self) -> None:
+    def connect(self):
+        self.client = mqtt.Client()
+        self.client.username_pw_set(self.device_token)
+        self.client.on_connect = self.on_connect
+        self.client.on_disconnect = self.on_disconnect
+
         try:
-            self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=self._get_client_id())
-            self.client.username_pw_set(username=self.config["mqtt"]["usuario"], password=self.config["mqtt"]["contrasena"])
-            self.client.tls_set()
-            self.client.will_set(self._get_will_topic(), payload=self._get_will_message(), qos=2, retain=True)
-            self.client.connect(self.config["mqtt"]["url"], self.config["mqtt"]["puerto"])
-            self.client.on_message = self.on_message
-            self.client.on_connect = self.on_connect
-            self.client.on_disconnect = self.on_disconnect
+            self.client.connect(self.tb_host, self.tb_port, 60)
             self.client.loop_start()
-            self.attempt_count = 0
-            self.is_connected = True
-        except KeyError as e:
-            raise KeyError(f"Configuration error: missing key {e}")
         except Exception as e:
-            self.logger.error("An error occurred initializing the MQTT connection. Verify the credentials and broker data.")
-            self.is_connected = False
-            raise ConnectionError(f"Error initializing MQTT connection: {e}")
-        
-    def disconnect(self) -> None:
-        if self.client and self.is_connected:
-            try:
-                # Publish the last will message before disconnecting
-                self._publish(self._get_will_message(), PublishType.ESTADO)
-                self.client.disconnect()
-                self.client.loop_stop()
-                self.is_connected = False
-                self.logger.info("Successfully disconnected from MQTT broker")
-            except Exception as e:
-                self.logger.error(f"Error disconnecting from MQTT broker: {e}")
+            self.logger.error(f"Failed to connect to ThingsBoard: {e}")
 
-    def _get_client_id(self) -> str:
-        return f"{self.config['cliente']['id_cliente']}_{self.config['cliente']['id_panel']}_FACP"
-
-    def _get_will_topic(self) -> str:
-        return f"{self.config['cliente']['id_cliente']}/FACP/{self.config['cliente']['id_panel']}/Estado"
-    
-    def on_message(self, client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage) -> None:
-        self.logger.info(f"Message received on topic {msg.topic}: {msg.payload}")
-
-    def on_connect(self, client: mqtt.Client, userdata: Any, flags: Dict[str, int], reason_code: int, properties: Any) -> None:
-        if reason_code == 0:
+    def on_connect(self, client, userdata, flags, rc):
+        if rc == 0:
+            self.logger.info("Connected to ThingsBoard")
             self.is_connected = True
-            self.logger.info("Successfully connected to MQTT broker")
-            self._publish_connected_message()
-            self.attempt_count = 0
         else:
-            self.logger.error(f"Failed to connect to MQTT broker with error code {reason_code}")
+            self.logger.error(f"Failed to connect to ThingsBoard, return code: {rc}")
 
-    def on_disconnect(self, client: mqtt.Client, userdata: Any, flags: Dict[str, int], reason_code: int, properties: Any) -> None:
+    def on_disconnect(self, client, userdata, rc):
+        self.logger.warning("Disconnected from ThingsBoard")
         self.is_connected = False
-        self.logger.warning(f"Disconnected from MQTT broker with return code {reason_code}")
-        if reason_code != 0:
-            self.logger.info("Unexpected disconnection, attempting to reconnect...")
 
-    def _get_will_message(self) -> str:
-        return json.dumps(OrderedDict([
-            ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-            ("ID_Panel", self.config["cliente"]["id_panel"]),
-            ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-            ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-            ("Mensaje", "Desconectado"),
-            ("Tipo", "Estado"),
-            ("Nivel_Severidad", 4),
-            ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-            ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-        ]))
+    def publish_telemetry(self, telemetry: Dict[str, Any]):
+        if not self.is_connected:
+            self.logger.warning("Not connected to ThingsBoard. Queueing telemetry.")
+            self.queue.put((PublishType.TELEMETRY, telemetry))
+            return
 
-    def _publish_connected_message(self) -> None:
         try:
-            message = json.dumps(OrderedDict([
-                ("ID_Cliente", self.config["cliente"]["id_cliente"]),
-                ("ID_Panel", self.config["cliente"]["id_panel"]),
-                ("Modelo_Panel", self.config["cliente"]["modelo_panel"]),
-                ("ID_Modelo_Panel", self.config['cliente']['id_modelo_panel']),
-                ("Mensaje", "Conectado" if self.queue.is_serial_connected else "Fallo serial"),
-                ("Tipo", "Estado"),
-                ("Nivel_Severidad", 0 if self.queue.is_serial_connected else 5),
-                ("latitud", self.config["cliente"]["coordenadas"]["latitud"]),
-                ("longitud", self.config["cliente"]["coordenadas"]["longitud"])
-            ]))
-            self._publish(message, PublishType.ESTADO)
-        except KeyError as e:
-            raise KeyError(f"Configuration error: missing key {e}")
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Error generating JSON message: {e}")
+            self.client.publish('v1/devices/me/telemetry', json.dumps(telemetry))
         except Exception as e:
-            raise ConnectionError(f"An unexpected error occurred while trying to create the 'Connected' status message {e}")
+            self.logger.error(f"Failed to publish telemetry: {e}")
+            self.queue.put((PublishType.TELEMETRY, telemetry))
 
-    def _get_publish_topic(self, pub_type: PublishType) -> str:
-        base_topic = f"{self.config['cliente']['id_cliente']}/FACP/{self.config['cliente']['id_panel']}"
-        match pub_type:
-            case PublishType.EVENTO:
-                return f"{base_topic}/Eventos"
-            case PublishType.REPORTE:
-                return f"{base_topic}/Reportes"
-            case PublishType.ESTADO:
-                return f"{base_topic}/Estado"
-            case PublishType.PANEL:
-                return f"{base_topic}/Panel"
-            case _:
-                raise ValueError("Invalid publication type entered")
+    def publish_attributes(self, attributes: Dict[str, Any]):
+        if not self.is_connected:
+            self.logger.warning("Not connected to ThingsBoard. Queueing attributes.")
+            self.queue.put((PublishType.ATTRIBUTE, attributes))
+            return
 
-    def _publish(self, message: str, pub_type: PublishType) -> None:
-        if self.client is None:
-            raise ConnectionError("MQTT client is not initialized")
         try:
-            topic = self._get_publish_topic(pub_type)
-            qos = 2
-            retain = pub_type == PublishType.ESTADO or pub_type == PublishType.PANEL
-            self.client.publish(topic, message, qos=qos, retain=retain)
-            self.logger.debug("Successfully published a message to the MQTT broker")
+            self.client.publish('v1/devices/me/attributes', json.dumps(attributes))
         except Exception as e:
-            raise ConnectionError(f"Error attempting to publish message to MQTT broker: {e}")
+            self.logger.error(f"Failed to publish attributes: {e}")
+            self.queue.put((PublishType.ATTRIBUTE, attributes))
 
-    def _process_queue_messages(self) -> bool:
-        while not self.queue.empty():
-            if not self.is_connected:
-                return False
-            else:
-                pub_type, message_data = self.queue.get()
+    def process_queue(self):
+        while not self.shutdown_flag.is_set():
+            if self.is_connected:
                 try:
-                    self._publish(message_data, pub_type)
-                except ConnectionError as e:
-                    self.logger.error(f"Lost connection while publishing, re-queueing message: {e}")
-                    self.queue.put((pub_type, message_data))
-                    return False
-                except Exception as e:
-                    self.logger.error(f"An unknown error occurred while trying to publish the message, re-queueing message: {e}")
-                    self.queue.put((pub_type, message_data))
-                    return False
-        return True
-
-    def listen_to_mqtt(self, shutdown_flag: threading.Event) -> None:
-        while not shutdown_flag.is_set():
-            try:
-                if self.client is None or not self.is_connected:
-                    if self.client is not None:
-                        self.client.loop_stop()
-                        self.client = None
-                    self.logger.debug(f"Attempting to connect to MQTT broker, attempt #{self.attempt_count + 1}")
-                    self.connect()
-                    self.attempt_count += 1
-                    if shutdown_flag.wait(min(60, 2 ** self.attempt_count)):
-                        break
-                if self.client is not None:
-                    if not self._process_queue_messages():
-                        self.logger.debug("Lost connection to MQTT broker. Restarting connection")
-                        self.client.loop_stop()
-                        self.client = None
+                    message_type, message = self.queue.get(block=False)
+                    if message_type == PublishType.ATTRIBUTE:
+                        self.publish_telemetry(message)
+                    elif message_type == PublishType.TELEMETRY:
+                        self.publish_attributes(message)
                     else:
-                        if shutdown_flag.wait(1):
-                            break
-            except Exception as e:
-                self.logger.debug(f"From general Exception, attempting to connect to MQTT broker, attempt #{self.attempt_count + 1}")
-                self.attempt_count += 1
-                if shutdown_flag.wait(min(60, 2 ** self.attempt_count)):
-                    break
-                self.logger.error(f"Unexpected error occurred. Attempting to connect to MQTT broker again: {e}")
-        
+                        self.logger.error(f'PublishType ${message_type} is not supported')
+                except SafeQueue.Empty:
+                    time.sleep(1)
+            else:
+                time.sleep(self.reconnect_interval)
+
+    def start(self):
+        self.connect()
+        self.shutdown_flag = threading.Event()
+        threading.Thread(target=self.process_queue, daemon=True).start()
+
+    def stop(self):
+        self.shutdown_flag.set()
         if self.client:
-            self.disconnect()
+            self.client.loop_stop()
+            self.client.disconnect()
