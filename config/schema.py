@@ -32,9 +32,6 @@ class RelayMonitorConfig(BaseModel):
     supervision_pin: int
     publish_interval: int
 
-class TestingConfig(BaseModel):
-    use_mock_gpio: bool
-
 class ConfigSchema(BaseModel):
     thingsboard: ThingsboardConfig
     serial: SerialConfig
