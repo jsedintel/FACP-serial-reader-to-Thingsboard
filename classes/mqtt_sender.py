@@ -73,10 +73,29 @@ class MqttHandler:
             return
 
         try:
-            self.client.publish('v1/devices/me/events', json.dumps(event))
+            formatted_event = {
+                "method": "sendEvent",
+                "params": {
+                    "event_type": self.determine_event_type(event),
+                    "event_data": event
+                }
+            }
+            self.client.publish('v1/devices/me/rpc/request/+', json.dumps(formatted_event))
+            self.logger.debug(f"Published event: {formatted_event}")
         except Exception as e:
             self.logger.error(f"Failed to publish event: {e}")
             self.queue.put((PublishType.EVENT, event))
+
+    def determine_event_type(self, event: Dict[str, Any]) -> str:
+        severity = event.get('severity', 0)
+        if severity == 3:
+            return 'ALARM'
+        elif severity == 2:
+            return 'WARNING'
+        elif severity == 1:
+            return 'INFO'
+        else:
+            return 'UNDEFINED'
 
     def process_queue(self):
         while not self.shutdown_flag.is_set():
@@ -85,19 +104,10 @@ class MqttHandler:
                     message_type, message = self.queue.get(block=False)
                     self.logger.debug(f"Processing message of type {message_type}: {message}")
                     if message_type == PublishType.TELEMETRY:
-                        if not isinstance(message, dict):
-                            self.logger.error(f"Invalid telemetry data format: {message}")
-                            continue
                         self.publish_telemetry(message)
                     elif message_type == PublishType.ATTRIBUTE:
-                        if not isinstance(message, dict):
-                            self.logger.error(f"Invalid attribute data format: {message}")
-                            continue
                         self.publish_attributes(message)
                     elif message_type == PublishType.EVENT:
-                        if not isinstance(message, str):
-                            self.logger.error(f"Invalid event data format: {message}")
-                            continue
                         self.publish_events(message)
                     else:
                         self.logger.error(f'PublishType {message_type} is not supported')

@@ -55,8 +55,7 @@ class SerialPortHandler:
     def publish_parsed_event(self, buffer: str) -> None:
         parsed_data = self.parse_string_event(buffer)
         if parsed_data is not None:
-            event = json.dumps(parsed_data)
-            self.queue.put((PublishType.EVENT, event))
+            self.queue.put((PublishType.EVENT, parsed_data))
         else:
             self.logger.debug("The parsed event information is empty, skipping MQTT publish.")
 

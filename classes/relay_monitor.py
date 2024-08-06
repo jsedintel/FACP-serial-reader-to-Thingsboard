@@ -29,19 +29,18 @@ class RelayMonitor:
             telemetry = self.get_relay_states()
             self.add_telemetry_to_queue(telemetry)
             
-            # Wait for the next interval or until the shutdown flag is set
             if shutdown_flag.wait(self.publish_interval):
                 break
 
-    def get_relay_states(self) -> Dict[str, int]:
+    def get_relay_states(self) -> Dict[str, bool]:
         telemetry = {}
         for status, pin in self.relay_pins.items():
             current_state = GPIO.input(pin)
-            relay_state = True if current_state == GPIO.LOW else False  # True means active (closed), False means inactive (open)
+            relay_state = current_state == GPIO.LOW
             telemetry[status.lower() + '_relay'] = relay_state
         return telemetry
 
-    def add_telemetry_to_queue(self, telemetry: Dict[str, int]):
+    def add_telemetry_to_queue(self, telemetry: Dict[str, bool]):
         self.logger.debug(f"Adding relay telemetry to queue: {telemetry}")
         self.queue.put((PublishType.TELEMETRY, telemetry))
 
