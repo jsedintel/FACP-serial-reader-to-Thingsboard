@@ -24,8 +24,7 @@ class RelayConfig(BaseModel):
     pin: int
     high_time: int
     low_time: int
-    publish_interval: int
-
+    
 class RelayMonitorConfig(BaseModel):
     alarm_pin: int
     trouble_pin: int

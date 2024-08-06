@@ -25,7 +25,6 @@ relay:
   pin: 8
   high_time: 5
   low_time: 5
-  publish_interval: 60
 #Componentes respectivos al control de la lectura de relays de los estados del panel
 relay_monitor:
   alarm_pin: 17

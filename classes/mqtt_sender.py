@@ -66,36 +66,35 @@ class MqttHandler:
             self.logger.error(f"Failed to publish attributes: {e}")
             self.queue.put((PublishType.ATTRIBUTE, attributes))
 
-    def publish_events(self, event: Dict[str, Any]):
+    def publish_alarm(self, alarm: Dict[str, Any]):
         if not self.is_connected:
-            self.logger.warning("Not connected to ThingsBoard. Queueing event.")
-            self.queue.put((PublishType.EVENT, event))
+            self.logger.warning("Not connected to ThingsBoard. Queueing alarm.")
+            self.queue.put((PublishType.ALARM, alarm))
             return
 
         try:
-            formatted_event = {
-                "method": "sendEvent",
-                "params": {
-                    "event_type": self.determine_event_type(event),
-                    "event_data": event
-                }
+            severity = self.determine_alarm_severity(alarm.get('severity', 0))
+            formatted_alarm = {
+                "device": self.device_token,
+                "type": alarm.get('event', 'UNKNOWN_ALARM'),
+                "severity": severity,
+                "status": "ACTIVE_UNACK",
+                "details": json.dumps(alarm)
             }
-            self.client.publish('v1/devices/me/rpc/request/+', json.dumps(formatted_event))
-            self.logger.debug(f"Published event: {formatted_event}")
+            self.client.publish('v1/gateway/alarm', json.dumps(formatted_alarm))
+            self.logger.debug(f"Published alarm: {formatted_alarm}")
         except Exception as e:
-            self.logger.error(f"Failed to publish event: {e}")
-            self.queue.put((PublishType.EVENT, event))
+            self.logger.error(f"Failed to publish alarm: {e}")
+            self.queue.put((PublishType.ALARM, alarm))
 
-    def determine_event_type(self, event: Dict[str, Any]) -> str:
-        severity = event.get('severity', 0)
-        if severity == 3:
-            return 'ALARM'
-        elif severity == 2:
-            return 'WARNING'
-        elif severity == 1:
-            return 'INFO'
-        else:
-            return 'UNDEFINED'
+    def determine_alarm_severity(self, severity: int) -> str:
+        severity_map = {
+            3: "CRITICAL",
+            2: "MINOR",
+            1: "WARNING",
+            0: "INDETERMINATE"
+        }
+        return severity_map.get(severity, "INDETERMINATE")
 
     def process_queue(self):
         while not self.shutdown_flag.is_set():
@@ -107,15 +106,14 @@ class MqttHandler:
                         self.publish_telemetry(message)
                     elif message_type == PublishType.ATTRIBUTE:
                         self.publish_attributes(message)
-                    elif message_type == PublishType.EVENT:
-                        self.publish_events(message)
+                    elif message_type == PublishType.ALARM:
+                        self.publish_alarm(message)
                     else:
                         self.logger.error(f'PublishType {message_type} is not supported')
                 except queue.Empty:
                     time.sleep(1)
             else:
                 time.sleep(self.reconnect_interval)
-
     def start(self):
         self.connect()
         self.shutdown_flag = threading.Event()
