@@ -31,6 +31,7 @@ relay_monitor:
   alarm_pin: 17
   trouble_pin: 27
   supervision_pin: 22
+  publish_interval: 15
 #Si se va a simular el GPIO en caso de correr el programa en cualquier dispositivo que no sea una RPi
 testing:
   use_mock_gpio: true

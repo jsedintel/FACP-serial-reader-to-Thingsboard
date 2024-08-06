@@ -7,6 +7,7 @@ import threading
 import time
 from classes.enums import PublishType
 from config.schema import ConfigSchema
+import queue
 
 class MqttHandler:
     def __init__(self, config: ConfigSchema, queue: SafeQueue):
@@ -72,13 +73,13 @@ class MqttHandler:
             if self.is_connected:
                 try:
                     message_type, message = self.queue.get(block=False)
-                    if message_type == PublishType.ATTRIBUTE:
+                    if message_type == PublishType.TELEMETRY:
                         self.publish_telemetry(message)
-                    elif message_type == PublishType.TELEMETRY:
+                    elif message_type == PublishType.ATTRIBUTE:
                         self.publish_attributes(message)
                     else:
-                        self.logger.error(f'PublishType ${message_type} is not supported')
-                except SafeQueue.Empty:
+                        self.logger.error(f'PublishType {message_type} is not supported')
+                except queue.Empty:
                     time.sleep(1)
             else:
                 time.sleep(self.reconnect_interval)

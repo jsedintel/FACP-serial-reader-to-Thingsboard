@@ -10,6 +10,7 @@ from components.queue_manager import QueueManager
 from components.thread_manager import ThreadManager
 from classes.relay_monitor import RelayMonitor
 from classes.enums import PublishType
+from classes.serial_port_handler import SerialPortHandler
 
 class Application:
     def __init__(self, config: ConfigSchema, event_severity_levels: dict):
@@ -25,7 +26,9 @@ class Application:
         self.relay_monitor = RelayMonitor(config, self.queue)
         self.thread_manager = ThreadManager(self.shutdown_flag)
 
-    def _create_serial_handler(self):
+        self.logger = logging.getLogger(__name__)
+
+    def _create_serial_handler(self) -> SerialPortHandler:
         id_modelo_panel = self.config.cliente.id_modelo_panel
         severity_list = self.event_severity_levels.get(id_modelo_panel, {})
         
@@ -45,11 +48,12 @@ class Application:
         attributes = {
             "Modelo Panel": self.config.cliente.modelo_panel,
             "Nombre Panel": self.config.cliente.id_panel,
-            "Raspberry Pi name:": self.config.cliente.RPi
+            "Raspberry Pi name": self.config.cliente.RPi
         }
         self.queue.put((PublishType.ATTRIBUTE, attributes))
 
     def start(self):
+        self.logger.info("Starting application...")
         self.queue_manager.load_queue()
         self.mqtt_handler.start()
         
@@ -76,11 +80,11 @@ class Application:
             self.shutdown()
 
     def shutdown(self):
-        logging.info("Initiating graceful shutdown...")
+        self.logger.info("Initiating graceful shutdown...")
         self.shutdown_flag.set()
         self.thread_manager.stop_threads()
         self.queue_manager.save_queue()
         self.relay_controller.cleanup()
         self.relay_monitor.cleanup()
         self.mqtt_handler.stop()
-        logging.info("Graceful shutdown completed")
+        self.logger.info("Graceful shutdown completed")

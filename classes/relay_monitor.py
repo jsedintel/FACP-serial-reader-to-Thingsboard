@@ -1,9 +1,10 @@
 import RPi.GPIO as GPIO
 import threading
+import time
 from typing import Dict
 from utils.queue_operations import SafeQueue
 from classes.enums import PublishType
-import json
+import logging
 from config.schema import ConfigSchema
 
 class RelayMonitor:
@@ -15,8 +16,9 @@ class RelayMonitor:
             'TROUBLE': config.relay_monitor.trouble_pin,
             'SUPERVISION': config.relay_monitor.supervision_pin
         }
-        self.setup_gpio()
         self.publish_interval = config.relay_monitor.publish_interval
+        self.logger = logging.getLogger(__name__)
+        self.setup_gpio()
 
     def setup_gpio(self):
         GPIO.setmode(GPIO.BCM)
@@ -25,22 +27,28 @@ class RelayMonitor:
 
     def monitor_relays(self, shutdown_flag: threading.Event):
         while not shutdown_flag.is_set():
-            telemetry = {}
-            for status, pin in self.relay_pins.items():
-                current_state = GPIO.input(pin)
-                telemetry[status.lower() + '_relay'] = 1 if current_state == 0 else 0
-            
+            telemetry = self.get_relay_states()
             self.add_telemetry_to_queue(telemetry)
             
+            # Wait for the next interval or until the shutdown flag is set
             if shutdown_flag.wait(self.publish_interval):
                 break
 
+    def get_relay_states(self) -> Dict[str, int]:
+        telemetry = {}
+        for status, pin in self.relay_pins.items():
+            current_state = GPIO.input(pin)
+            relay_state = 1 if current_state == GPIO.LOW else 0  # 1 means active (closed), 0 means inactive (open)
+            telemetry[status.lower() + '_relay'] = relay_state
+        return telemetry
+
     def add_telemetry_to_queue(self, telemetry: Dict[str, int]):
-        self.queue.put((PublishType.TELEMETRY, json.dumps(telemetry)))
+        self.logger.debug(f"Adding relay telemetry to queue: {telemetry}")
+        self.queue.put((PublishType.TELEMETRY, telemetry))
 
     def cleanup(self):
-        if self.is_raspberry_pi and self.GPIO:
-            try:
-                self.GPIO.cleanup(list(self.relay_pins.values()))
-            except Exception as e:
-                self.logger.error(f"Error during GPIO cleanup: {e}")
+        try:
+            GPIO.cleanup(list(self.relay_pins.values()))
+            self.logger.info("GPIO cleanup completed for RelayMonitor")
+        except Exception as e:
+            self.logger.error(f"Error during GPIO cleanup in RelayMonitor: {e}")
