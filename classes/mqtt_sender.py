@@ -47,14 +47,12 @@ class MqttHandler:
     def publish_telemetry(self, telemetry: Dict[str, Any]):
         if not self.is_connected:
             self.logger.warning("Not connected to ThingsBoard. Queueing telemetry.")
-            self.queue.put((PublishType.TELEMETRY, telemetry))
             return
 
         try:
             self.client.publish('v1/devices/me/telemetry', json.dumps(telemetry))
         except Exception as e:
             self.logger.error(f"Failed to publish telemetry: {e}")
-            self.queue.put((PublishType.TELEMETRY, telemetry))
 
     def publish_attributes(self, attributes: Dict[str, Any]):
         if not self.is_connected:
@@ -68,15 +66,39 @@ class MqttHandler:
             self.logger.error(f"Failed to publish attributes: {e}")
             self.queue.put((PublishType.ATTRIBUTE, attributes))
 
+    def publish_events(self, event: Dict[str, Any]):
+        if not self.is_connected:
+            self.logger.warning("Not connected to ThingsBoard. Queueing event.")
+            self.queue.put((PublishType.EVENT, event))
+            return
+
+        try:
+            self.client.publish('v1/devices/me/events', json.dumps(event))
+        except Exception as e:
+            self.logger.error(f"Failed to publish event: {e}")
+            self.queue.put((PublishType.EVENT, event))
+
     def process_queue(self):
         while not self.shutdown_flag.is_set():
             if self.is_connected:
                 try:
                     message_type, message = self.queue.get(block=False)
+                    self.logger.debug(f"Processing message of type {message_type}: {message}")
                     if message_type == PublishType.TELEMETRY:
+                        if not isinstance(message, dict):
+                            self.logger.error(f"Invalid telemetry data format: {message}")
+                            continue
                         self.publish_telemetry(message)
                     elif message_type == PublishType.ATTRIBUTE:
+                        if not isinstance(message, dict):
+                            self.logger.error(f"Invalid attribute data format: {message}")
+                            continue
                         self.publish_attributes(message)
+                    elif message_type == PublishType.EVENT:
+                        if not isinstance(message, str):
+                            self.logger.error(f"Invalid event data format: {message}")
+                            continue
+                        self.publish_events(message)
                     else:
                         self.logger.error(f'PublishType {message_type} is not supported')
                 except queue.Empty:

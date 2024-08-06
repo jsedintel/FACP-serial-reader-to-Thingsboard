@@ -137,7 +137,7 @@ class Notifier_NFS320(SerialPortHandler):
             if len(lines) > 1:
                 description += "\n" + "\n".join(lines[1:])
 
-            severity = 6 if ":" in ID_Event else self.eventSeverityLevels.get(ID_Event, self.default_event_severity_not_recognized)
+            severity = 3 if ":" in ID_Event else self.eventSeverityLevels.get(ID_Event, self.default_event_severity_not_recognized)
 
             return {
                 "event": ID_Event,

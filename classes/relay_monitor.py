@@ -1,6 +1,5 @@
 import RPi.GPIO as GPIO
 import threading
-import time
 from typing import Dict
 from utils.queue_operations import SafeQueue
 from classes.enums import PublishType
@@ -38,7 +37,7 @@ class RelayMonitor:
         telemetry = {}
         for status, pin in self.relay_pins.items():
             current_state = GPIO.input(pin)
-            relay_state = 1 if current_state == GPIO.LOW else 0  # 1 means active (closed), 0 means inactive (open)
+            relay_state = True if current_state == GPIO.LOW else False  # True means active (closed), False means inactive (open)
             telemetry[status.lower() + '_relay'] = relay_state
         return telemetry
 

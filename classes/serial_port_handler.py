@@ -17,7 +17,7 @@ class SerialPortHandler:
         self.logger = logging.getLogger(__name__)
         self.report_delimiter = ""
         self.max_report_delimiter_count = -1
-        self.default_event_severity_not_recognized = 3
+        self.default_event_severity_not_recognized = 0
         self.parity_dic = {'none': serial.PARITY_NONE, 
             'even': serial.PARITY_EVEN,
             'odd': serial.PARITY_ODD
@@ -55,10 +55,8 @@ class SerialPortHandler:
     def publish_parsed_event(self, buffer: str) -> None:
         parsed_data = self.parse_string_event(buffer)
         if parsed_data is not None:
-            telemetry = {
-                "events": json.dumps(parsed_data)
-            }
-            self.queue.put((PublishType.TELEMETRY, telemetry))
+            event = json.dumps(parsed_data)
+            self.queue.put((PublishType.EVENT, event))
         else:
             self.logger.debug("The parsed event information is empty, skipping MQTT publish.")
 
