@@ -38,4 +38,3 @@ class ConfigSchema(BaseModel):
     cliente: ClientConfig
     relay: RelayConfig
     relay_monitor: RelayMonitorConfig
-    testing: TestingConfig
