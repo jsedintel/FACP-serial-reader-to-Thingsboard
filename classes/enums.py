@@ -3,7 +3,6 @@ from enum import Enum, auto
 class PublishType(Enum):
     TELEMETRY = auto()
     ATTRIBUTE = auto()
-    ALARM = auto()
 
 class SeverityLevel(Enum):
     NOTIFICACION = 1

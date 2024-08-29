@@ -3,7 +3,6 @@ from utils.queue_operations import SafeQueue
 from typing import Tuple, Dict, Any
 from classes.enums import PublishType
 import time
-import json
 import logging
 import threading
 from config.schema import ConfigSchema
@@ -54,8 +53,10 @@ class SerialPortHandler:
 
     def publish_parsed_event(self, buffer: str) -> None:
         parsed_data = self.parse_string_event(buffer)
+        telemetry = {}
+        telemetry['events'] = parsed_data
         if parsed_data is not None:
-            self.queue.put((PublishType.ALARM, parsed_data))
+            self.queue.put((PublishType.TELEMETRY, telemetry))
         else:
             self.logger.debug("The parsed event information is empty, skipping MQTT publish.")
 

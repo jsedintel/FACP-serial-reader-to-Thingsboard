@@ -66,36 +66,6 @@ class MqttHandler:
             self.logger.error(f"Failed to publish attributes: {e}")
             self.queue.put((PublishType.ATTRIBUTE, attributes))
 
-    def publish_alarm(self, alarm: Dict[str, Any]):
-        if not self.is_connected:
-            self.logger.warning("Not connected to ThingsBoard. Queueing alarm.")
-            self.queue.put((PublishType.ALARM, alarm))
-            return
-
-        try:
-            severity = self.determine_alarm_severity(alarm.get('severity', 0))
-            formatted_alarm = {
-                "device": self.device_token,
-                "type": alarm.get('event', 'UNKNOWN_ALARM'),
-                "severity": severity,
-                "status": "ACTIVE_UNACK",
-                "details": json.dumps(alarm)
-            }
-            self.client.publish('v1/gateway/alarm', json.dumps(formatted_alarm))
-            self.logger.debug(f"Published alarm: {formatted_alarm}")
-        except Exception as e:
-            self.logger.error(f"Failed to publish alarm: {e}")
-            self.queue.put((PublishType.ALARM, alarm))
-
-    def determine_alarm_severity(self, severity: int) -> str:
-        severity_map = {
-            3: "CRITICAL",
-            2: "MINOR",
-            1: "WARNING",
-            0: "INDETERMINATE"
-        }
-        return severity_map.get(severity, "INDETERMINATE")
-
     def process_queue(self):
         while not self.shutdown_flag.is_set():
             if self.is_connected:
@@ -106,8 +76,6 @@ class MqttHandler:
                         self.publish_telemetry(message)
                     elif message_type == PublishType.ATTRIBUTE:
                         self.publish_attributes(message)
-                    elif message_type == PublishType.ALARM:
-                        self.publish_alarm(message)
                     else:
                         self.logger.error(f'PublishType {message_type} is not supported')
                 except queue.Empty:
