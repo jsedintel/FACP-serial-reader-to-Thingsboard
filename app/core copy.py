@@ -1,5 +1,4 @@
 import logging
-import time
 from config.loader import ConfigSchema
 from classes.mqtt_sender import MqttHandler
 from classes.specific_serial_handler import Edwards_iO1000, Edwards_EST3x, Notifier_NFS320
@@ -27,7 +26,7 @@ class Application:
 
         self.logger = logging.getLogger(__name__)
 
-    def _create_serial_handler(self):
+    def _create_serial_handler(self) -> SerialPortHandler:
         if self.id_modelo_panel is None:
             raise ValueError("id_modelo_panel is not set")
         
@@ -51,16 +50,7 @@ class Application:
             return
 
         self.logger.info(f"Received attribute update: {result}")
-        if result and 'shared' in result and 'id_modelo_panel' in result['shared']:
-            new_id_modelo_panel = int(result['shared']['id_modelo_panel'])
-            self.logger.info(f"Received new id_modelo_panel: {new_id_modelo_panel}")
-            if new_id_modelo_panel != self.id_modelo_panel:
-                self.id_modelo_panel = new_id_modelo_panel
-                self.logger.info(f"id_modelo_panel set to {self.id_modelo_panel}")
-                self.restart_serial_handler()
-            else:
-                self.logger.info(f"id_modelo_panel is already set to {self.id_modelo_panel}")
-        elif result and 'id_modelo_panel' in result:
+        if result and 'id_modelo_panel' in result:
             new_id_modelo_panel = int(result['id_modelo_panel'])
             self.logger.info(f"Received new id_modelo_panel: {new_id_modelo_panel}")
             if new_id_modelo_panel != self.id_modelo_panel:
@@ -70,31 +60,31 @@ class Application:
             else:
                 self.logger.info(f"id_modelo_panel is already set to {self.id_modelo_panel}")
         else:
-            self.logger.warning("Received attribute is not implemented")
+            self.logger.warning("Received attribute update does not contain 'id_modelo_panel'")
 
+    def _create_serial_handler(self):
+        if self.id_modelo_panel is None:
+            raise ValueError("id_modelo_panel is not set")
+        
+        severity_list = self.event_severity_levels.get(self.id_modelo_panel, {})
+        
+        handlers = {
+            10001: Edwards_iO1000,
+            10002: Edwards_EST3x,
+            10003: Notifier_NFS320
+        }
+        
+        handler_class = handlers.get(self.id_modelo_panel)
+        if not handler_class:
+            raise ValueError(f"Unsupported panel model: {self.id_modelo_panel}")
+        
+        return handler_class(self.config, severity_list, self.queue)
+    
     def restart_serial_handler(self):
         if self.serial_handler:
-            self.thread_manager.stop_thread("listening_to_serial")
+            self.thread_manager.stop_thread("serial_handler")
         self.serial_handler = self._create_serial_handler()
         self.thread_manager.start_thread(self.serial_handler.listening_to_serial)
-
-    def request_id_modelo_panel(self):
-        retry_delay = 5
-        attempt = 0
-        while True:
-            self.logger.info(f"Requesting id_modelo_panel (attempt {attempt + 1})")
-            self.mqtt_handler.request_attributes([],['id_modelo_panel'], callback=self.on_attributes_change)
-            
-            # Wait for the id_modelo_panel to be set
-            for _ in range(10):  # Wait up to 10 seconds
-                if self.id_modelo_panel is not None:
-                    self.logger.info(f"Received id_modelo_panel: {self.id_modelo_panel}")
-                    return
-                time.sleep(1)
-            
-            self.logger.warning(f"Failed to get id_modelo_panel. Retrying in {retry_delay} seconds...")
-            attempt=+1
-            time.sleep(retry_delay)
 
     def start(self):
         self.logger.info("Starting application...")
@@ -103,12 +93,7 @@ class Application:
         
         self.mqtt_handler.subscribe_to_attribute("id_modelo_panel", self.on_attributes_change)
         self.logger.info("Requesting initial id_modelo_panel value")
-        self.request_id_modelo_panel()
-        
-        if self.id_modelo_panel is None:
-            raise RuntimeError("Failed to get initial id_modelo_panel value")
-        
-        self.serial_handler = self._create_serial_handler()
+        self.mqtt_handler.request_attributes(["id_modelo_panel"], callback=self.on_attributes_change)
         
         threads = [
             update_check_thread,

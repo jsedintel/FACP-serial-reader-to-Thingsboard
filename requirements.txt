@@ -5,3 +5,4 @@ pyinstaller
 requests
 pydantic
 RPi.GPIO
+tb-mqtt-client

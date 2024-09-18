@@ -1,6 +1,6 @@
 from datetime import datetime
 from classes.serial_port_handler import SerialPortHandler
-from utils.queue_operations import SafeQueue
+from app_utils.queue_operations import SafeQueue
 import re
 import time
 import serial
@@ -22,6 +22,14 @@ class Edwards_iO1000(SerialPortHandler):
         super().__init__(config, eventSeverityLevels, queue)
         self.report_delimiter = "-----------------"
         self.max_report_delimiter_count = 4
+        self.serial_config = {
+            "baudrate": 9600,
+            "bytesize": 8,
+            "parity": "none",
+            "stopbits": 1,
+            "xonxoff": False,
+            "timeout": 1
+        }
 
     def parse_string_event(self, event: str) -> Dict[str, Any] | None:
         try:
@@ -61,6 +69,15 @@ class Edwards_EST3x(SerialPortHandler):
         self.report_delimiter = "-----------------"
         self.max_report_delimiter_count = 2
         self.end_report_delimiter = "**"
+        self.serial_config = {
+            "baudrate": 9600,
+            "bytesize": 8,
+            "parity": "none",
+            "stopbits": 1,
+            "xonxoff": False,
+            "timeout": 1
+        }
+
 
     def parse_string_event(self, event: str) -> Dict[str, Any] | None:
         try:
@@ -118,6 +135,14 @@ class Notifier_NFS320(SerialPortHandler):
         super().__init__(config, eventSeverityLevels, queue)
         self.report_delimiter = "************"
         self.max_report_delimiter_count = 2
+        self.serial_config = {
+            "baudrate": 9600,
+            "bytesize": 7,
+            "parity": "even",
+            "stopbits": 1,
+            "xonxoff": True,
+            "timeout": 1
+        }
 
     def parse_string_event(self, event: str) -> Dict[str, Any] | None:
         try:

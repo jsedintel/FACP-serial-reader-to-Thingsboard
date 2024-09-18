@@ -3,31 +3,24 @@ thingsboard:
   device_token: YOUR_DEVICE_TOKEN
   host: YOUR_THINGSBOARD_HOST
   port: YOUR_THINGSBOARD_PORT
+#Componentes respectivos a Thingsboard
+thingsboard:
+  device_token: 77nnwru7ml1zbj7165yk
+  host: mqtt.thingsboard.cloud
+  port: 1883
 #Componentes respectivos a serial
 serial:
   #Puerto correspondiente en el que se conectara el USB
-  puerto: COM3
-  #De aqui en adelante es probable que no se deban modificar, a menos de que los intruyan a hacerlo
-  baudrate: 9600
-  bytesize: 8
-  parity: none
-  stopbits: 1
-  xonxoff: False
-  timeout: 1
-#Componentes respectivos a la informacion del cliente y del dispositivo
-cliente:
-  RPi: local_test #Nombre de la Pi en la que el programa va a correr.
-  id_panel: Test_FACP
-  modelo_panel: Notifier NFS320
-  id_modelo_panel: 10003
+  puerto: /dev/serial-adapter
 #Componentes respectivos al control del relay del Test Alive
 relay:
   pin: 8
-  high_time: 5
-  low_time: 5
+  high_time: 1
+  low_time: 60
 #Componentes respectivos al control de la lectura de relays de los estados del panel
 relay_monitor:
-  alarm_pin: 17
+  alarm_pin: 13
   trouble_pin: 27
-  supervision_pin: 22
   publish_interval: 15
+  alarm_active_high: true
+  trouble_active_high: false

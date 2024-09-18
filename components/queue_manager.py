@@ -1,7 +1,7 @@
 import threading
 import logging
-from utils.file_operations import save_to_file, load_from_file
-from utils.queue_operations import SafeQueue
+from app_utils.file_operations import save_to_file, load_from_file
+from app_utils.queue_operations import SafeQueue
 import pickle
 
 class QueueManager:
@@ -21,7 +21,7 @@ class QueueManager:
             with self.queue.mutex:
                 queue_contents = list(self.queue.queue)
             save_to_file(queue_contents, self.queue_file_path)
-            self.logger.debug(f"Queue saved to {self.queue_file_path}")
+            #self.logger.debug(f"Queue saved to {self.queue_file_path}")
         except Exception as e:
             self.logger.error(f"Error saving queue: {e}")
 

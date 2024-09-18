@@ -7,18 +7,6 @@ class ThingsboardConfig(BaseModel):
 
 class SerialConfig(BaseModel):
     puerto: str
-    baudrate: int
-    bytesize: int
-    parity: str
-    stopbits: int
-    xonxoff: bool
-    timeout: int
-
-class ClientConfig(BaseModel):
-    RPi: str
-    id_panel: str
-    modelo_panel: str
-    id_modelo_panel: int
 
 class RelayConfig(BaseModel):
     pin: int
@@ -28,12 +16,12 @@ class RelayConfig(BaseModel):
 class RelayMonitorConfig(BaseModel):
     alarm_pin: int
     trouble_pin: int
-    supervision_pin: int
     publish_interval: int
+    alarm_active_high: bool
+    trouble_active_high: bool
 
 class ConfigSchema(BaseModel):
     thingsboard: ThingsboardConfig
     serial: SerialConfig
-    cliente: ClientConfig
     relay: RelayConfig
     relay_monitor: RelayMonitorConfig

@@ -1,10 +1,9 @@
 import serial
-from utils.queue_operations import SafeQueue
+from app_utils.queue_operations import SafeQueue
 from typing import Tuple, Dict, Any
 from classes.enums import PublishType
 import time
 import logging
-import json
 import threading
 from config.schema import ConfigSchema
 
@@ -25,16 +24,17 @@ class SerialPortHandler:
         self.attempt = 0
         self.max_reconnect_delay = 60
         self.base_delay = 1
+        self.serial_config = {}
 
     def init_serial_port(self) -> None:
         self.ser = serial.Serial(
             port=self.config.serial.puerto,
-            baudrate=self.config.serial.baudrate,
-            bytesize=self.config.serial.bytesize,
-            parity=self.parity_dic[self.config.serial.parity],
-            stopbits=self.config.serial.stopbits,
-            xonxoff=self.config.serial.xonxoff,
-            timeout=self.config.serial.timeout
+            baudrate=self.serial_config.get('baudrate'),
+            bytesize=self.serial_config.get('bytesize'),
+            parity=self.parity_dic[self.serial_config.get('parity')],
+            stopbits=self.serial_config.get('stopbits'),
+            xonxoff=self.serial_config.get('xonxoff'),
+            timeout=self.serial_config.get('timeout')
         )
 
     def open_serial_port(self) -> None:
@@ -54,10 +54,9 @@ class SerialPortHandler:
 
     def publish_parsed_event(self, buffer: str) -> None:
         parsed_data = self.parse_string_event(buffer)
-        telemetry = {}
-        telemetry['events'] = json.dumps(parsed_data)
         if parsed_data is not None:
-            self.queue.put((PublishType.TELEMETRY, telemetry))
+            self.logger.info(f'Event queued: {parsed_data}')
+            self.queue.put((PublishType.TELEMETRY, parsed_data))
         else:
             self.logger.debug("The parsed event information is empty, skipping MQTT publish.")
 
@@ -83,10 +82,15 @@ class SerialPortHandler:
                     break
 
     def close_serial_port(self) -> None:
-        if self.ser and self.ser.is_open:
-            self.ser.close()
-            
-        self.logger.warning("Serial port closed")
+        if self.ser:
+            try:
+                if self.ser.is_open:
+                    self.ser.close()
+                self.logger.info("Serial port closed")
+            except Exception as e:
+                self.logger.error(f"Error closing serial port: {e}")
+        self.ser = None
+        self.queue.is_serial_connected = False
 
     def process_incoming_data(self, shutdown_flag: threading.Event) -> None:
         buffer = ""
@@ -109,7 +113,7 @@ class SerialPortHandler:
                         buffer, report_count = self.handle_data_line(incoming_line, buffer, report_count)
                 else:
                     time.sleep(0.1)
-        except (serial.SerialException, serial.SerialTimeoutException) as e:
+        except (serial.SerialException, serial.SerialTimeoutException, OSError) as e:
             raise serial.SerialException(str(e))
         except (TypeError, UnicodeDecodeError) as e:
             if buffer:

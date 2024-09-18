@@ -1,8 +1,7 @@
-import paho.mqtt.client as mqtt
-from utils.queue_operations import SafeQueue
-import json
+from tb_device_mqtt import TBDeviceMqttClient
+from app_utils.queue_operations import SafeQueue
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 import threading
 import time
 from classes.enums import PublishType
@@ -12,7 +11,6 @@ import queue
 class MqttHandler:
     def __init__(self, config: ConfigSchema, queue: SafeQueue):
         self.config = config
-        self.client = None
         self.queue = queue
         self.logger = logging.getLogger(__name__)
         self.is_connected = False
@@ -20,39 +18,30 @@ class MqttHandler:
         self.device_token = config.thingsboard.device_token
         self.tb_host = config.thingsboard.host
         self.tb_port = config.thingsboard.port
+        self.client = TBDeviceMqttClient(host=self.tb_host, username=self.device_token, port=self.tb_port)
+        self.client.connect()
 
     def connect(self):
-        self.client = mqtt.Client()
-        self.client.username_pw_set(self.device_token)
-        self.client.on_connect = self.on_connect
-        self.client.on_disconnect = self.on_disconnect
-
         try:
-            self.client.connect(self.tb_host, self.tb_port, 60)
-            self.client.loop_start()
+            self.client.connect()
+            self.is_connected = True
+            self.logger.info("Successfully connected to ThingsBoard")
         except Exception as e:
             self.logger.error(f"Failed to connect to ThingsBoard: {e}")
-
-    def on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
-            self.logger.info("Connected to ThingsBoard")
-            self.is_connected = True
-        else:
-            self.logger.error(f"Failed to connect to ThingsBoard, return code: {rc}")
-
-    def on_disconnect(self, client, userdata, rc):
-        self.logger.warning("Disconnected from ThingsBoard")
-        self.is_connected = False
+            self.is_connected = False
 
     def publish_telemetry(self, telemetry: Dict[str, Any]):
         if not self.is_connected:
             self.logger.warning("Not connected to ThingsBoard. Queueing telemetry.")
+            self.queue.put((PublishType.TELEMETRY, telemetry))
             return
 
         try:
-            self.client.publish('v1/devices/me/telemetry', json.dumps(telemetry))
+            self.client.send_telemetry(telemetry)
+            self.logger.debug(f"Telemetry sent successfully: {telemetry}")
         except Exception as e:
             self.logger.error(f"Failed to publish telemetry: {e}")
+            self.queue.put((PublishType.TELEMETRY, telemetry))
 
     def publish_attributes(self, attributes: Dict[str, Any]):
         if not self.is_connected:
@@ -61,10 +50,18 @@ class MqttHandler:
             return
 
         try:
-            self.client.publish('v1/devices/me/attributes', json.dumps(attributes))
+            self.client.send_attributes(attributes)
+            self.logger.debug(f"Attributes sent successfully: {attributes}")
         except Exception as e:
             self.logger.error(f"Failed to publish attributes: {e}")
             self.queue.put((PublishType.ATTRIBUTE, attributes))
+
+    def subscribe_to_attribute(self, attribute_name: str, callback: Callable):
+        self.client.subscribe_to_attribute(attribute_name, callback)
+        self.logger.info(f"Subscribed to attribute: {attribute_name}")
+
+    def request_attributes(self, client_attribute_names: list, shared_attribute_names: list, callback: Callable):
+        self.client.request_attributes(client_attribute_names, shared_attribute_names, callback=callback)
 
     def process_queue(self):
         while not self.shutdown_flag.is_set():
@@ -81,14 +78,18 @@ class MqttHandler:
                 except queue.Empty:
                     time.sleep(1)
             else:
+                self.logger.warning("Not connected to ThingsBoard. Attempting to reconnect...")
+                self.connect()
                 time.sleep(self.reconnect_interval)
+
     def start(self):
         self.connect()
         self.shutdown_flag = threading.Event()
         threading.Thread(target=self.process_queue, daemon=True).start()
+        self.logger.info("MQTT Handler started")
 
     def stop(self):
         self.shutdown_flag.set()
         if self.client:
-            self.client.loop_stop()
             self.client.disconnect()
+        self.logger.info("MQTT Handler stopped")

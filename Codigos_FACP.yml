@@ -1,21 +1,4 @@
 #Nombre_Panel: Codigo
-Edwards configuracion general:
-  baudrate: 9600
-  bytesize: 8
-  parity: none
-  stopbits: 1
-  xonxoff: False
-  timeout: 1
-
 Edwards iO1000: 10001
 Edwards EST3x: 10002
----
-Notifier configuracion general:
-  baudrate: 9600
-  bytesize: 7
-  parity: even
-  stopbits: 1
-  xonxoff: True
-  timeout: 1
-
 Notifier_NFS320/Notifier_NFS640: 10003

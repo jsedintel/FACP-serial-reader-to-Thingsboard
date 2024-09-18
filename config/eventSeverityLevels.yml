@@ -1,8 +1,6 @@
 #ID_Panel, Evento y su respectivo nivel de severidad
-#ID_panel:
-#- Eventos: Nvl_Severidad
 #Severidad 3: Severo
-#Severidad 2: Medio
+#Severidad 2: Advertencia
 #Severidad 1: Notificacion
 
 10001:

@@ -10,12 +10,12 @@ class SafeQueue(queue.Queue):
         self.is_serial_connected = False
 
     def save_to_file(self, file_path: str) -> None:
-        from utils.file_operations import save_to_file
+        from app_utils.file_operations import save_to_file
         with self.mutex:
             save_to_file(list(self.queue), file_path)
 
     def load_from_file(self, file_path: str) -> None:
-        from utils.file_operations import load_from_file
+        from app_utils.file_operations import load_from_file
         with self.mutex:
             try:
                 items: List[Any] = load_from_file(file_path)

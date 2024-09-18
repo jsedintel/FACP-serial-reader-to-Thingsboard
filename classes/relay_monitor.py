@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 import threading
-from typing import Dict, List
-from utils.queue_operations import SafeQueue
+from typing import Dict
+from app_utils.queue_operations import SafeQueue
 from classes.enums import PublishType
 import logging
 from config.schema import ConfigSchema
@@ -11,6 +11,7 @@ class RelayMonitor:
         self.config = config
         self.queue = queue
         self.relay_pins = self._get_relay_pins()
+        self.active_states = self._get_active_states()
         self.publish_interval = config.relay_monitor.publish_interval
         self.logger = logging.getLogger(__name__)
         self._setup_gpio()
@@ -18,8 +19,13 @@ class RelayMonitor:
     def _get_relay_pins(self) -> Dict[str, int]:
         return {
             'ALARM': self.config.relay_monitor.alarm_pin,
-            'TROUBLE': self.config.relay_monitor.trouble_pin,
-            'SUPERVISION': self.config.relay_monitor.supervision_pin
+            'TROUBLE': self.config.relay_monitor.trouble_pin
+        }
+
+    def _get_active_states(self) -> Dict[str, int]:
+        return {
+            'ALARM': GPIO.HIGH if self.config.relay_monitor.alarm_active_high else GPIO.LOW,
+            'TROUBLE': GPIO.HIGH if self.config.relay_monitor.trouble_active_high else GPIO.LOW
         }
 
     def _setup_gpio(self):
@@ -36,12 +42,17 @@ class RelayMonitor:
                 break
 
     def _get_relay_states(self) -> Dict[str, bool]:
-        return {
-            f"{status.lower()}_relay": GPIO.input(pin) == GPIO.LOW
-            for status, pin in self.relay_pins.items()
-        }
+        states = {}
+        for status, pin in self.relay_pins.items():
+            gpio_state = GPIO.input(pin)
+            active_state = self.active_states[status]
+            is_active = gpio_state == active_state
+            states[f"{status.lower()}_relay"] = is_active
+            #self.logger.debug(f"{status} relay: GPIO state = {gpio_state}, Active state = {active_state}, Is active = {is_active}")
+        return states
 
     def _add_telemetry_to_queue(self, telemetry: Dict[str, bool]):
+        #self.logger.info(f'Relay states: {telemetry}')
         self.queue.put((PublishType.TELEMETRY, telemetry))
 
     def cleanup(self):
