@@ -68,7 +68,6 @@ class MqttHandler:
             if self.is_connected:
                 try:
                     message_type, message = self.queue.get(block=False)
-                    self.logger.debug(f"Processing message of type {message_type}: {message}")
                     if message_type == PublishType.TELEMETRY:
                         self.publish_telemetry(message)
                     elif message_type == PublishType.ATTRIBUTE:
