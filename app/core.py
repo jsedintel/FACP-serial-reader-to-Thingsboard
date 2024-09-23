@@ -111,7 +111,7 @@ class Application:
         self.serial_handler = self._create_serial_handler()
         
         threads = [
-            update_check_thread,
+            #update_check_thread,
             self.queue_manager.save_queue_periodically,
             self.relay_monitor.monitor_relays,
             self.relay_controller.relay_control

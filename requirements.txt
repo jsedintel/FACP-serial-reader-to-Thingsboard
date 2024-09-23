@@ -1,7 +1,6 @@
 paho-mqtt
 pyserial
 PyYAML
-pyinstaller
 requests
 pydantic
 RPi.GPIO
