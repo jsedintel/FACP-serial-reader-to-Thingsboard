@@ -82,19 +82,26 @@ class Application:
         retry_delay = 5
         attempt = 0
         while True:
-            self.logger.info(f"Requesting id_modelo_panel (attempt {attempt + 1})")
-            self.mqtt_handler.request_attributes([],['id_modelo_panel'], callback=self.on_attributes_change)
-            
-            # Wait for the id_modelo_panel to be set
-            for _ in range(10):  # Wait up to 10 seconds
-                if self.id_modelo_panel is not None:
-                    self.logger.info(f"Received id_modelo_panel: {self.id_modelo_panel}")
-                    return
+            try:
+                self.logger.info(f"Requesting id_modelo_panel (attempt {attempt + 1})")
+                self.mqtt_handler.request_attributes([],['id_modelo_panel'], callback=self.on_attributes_change)
+                
+                # Wait for the id_modelo_panel to be set
+                for _ in range(10):  # Wait up to 10 seconds
+                    if self.id_modelo_panel is not None:
+                        self.logger.info(f"Received id_modelo_panel: {self.id_modelo_panel}")
+                        return
+                    time.sleep(1)
+                
+                self.logger.warning(f"Failed to get id_modelo_panel. Retrying in {retry_delay} seconds...")
+                attempt=+1
+                time.sleep(retry_delay)
+            except Exception as e:
+                self.logger.error("Unknown error happened: " + e)
+                self.logger.info("Retrying...")
+                attempt=+1
                 time.sleep(1)
-            
-            self.logger.warning(f"Failed to get id_modelo_panel. Retrying in {retry_delay} seconds...")
-            attempt=+1
-            time.sleep(retry_delay)
+                
 
     def start(self):
         self.logger.info("Starting application...")
