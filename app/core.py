@@ -107,11 +107,11 @@ class Application:
         self.logger.info("Starting application...")
         self.queue_manager.load_queue()
         self.mqtt_handler.start()
-        
+        time.sleep(2)
         self.mqtt_handler.subscribe_to_attribute("id_modelo_panel", self.on_attributes_change)
         self.logger.info("Requesting initial id_modelo_panel value")
         self.request_id_modelo_panel()
-        
+
         if self.id_modelo_panel is None:
             raise RuntimeError("Failed to get initial id_modelo_panel value")
         
