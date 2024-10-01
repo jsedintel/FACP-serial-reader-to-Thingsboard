@@ -22,7 +22,7 @@ class Application:
 
         self.queue_manager = QueueManager(self.queue, "queue_backup.pkl")
         self.relay_controller = RelayController(config.relay)
-        self.relay_monitor = RelayMonitor(config, self.queue)
+        self.relay_monitor = RelayMonitor(config, self.mqtt_handler)
         self.thread_manager = ThreadManager()
 
         self.logger = logging.getLogger(__name__)
@@ -107,7 +107,8 @@ class Application:
         self.logger.info("Starting application...")
         self.queue_manager.load_queue()
         self.mqtt_handler.start()
-        time.sleep(2)
+        while not self.mqtt_handler.client.is_connected:
+            time.sleep(1)
         self.mqtt_handler.subscribe_to_attribute("id_modelo_panel", self.on_attributes_change)
         self.logger.info("Requesting initial id_modelo_panel value")
         self.request_id_modelo_panel()

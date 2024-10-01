@@ -153,7 +153,8 @@ class SerialPortHandler:
                 self.open_serial_port()
                 self.process_incoming_data(shutdown_flag)
             except (serial.SerialException, serial.SerialTimeoutException) as e:
-                self.logger.error(f"Lost serial connection: {e}")
+                self.logger.error(f"Lost serial connection. Retrying in 5 seconds. Error: {e} ")
+                self.close_serial_port()
                 self.attempt_reconnection(shutdown_flag)
             except (TypeError, UnicodeDecodeError) as e:
                 self.logger.error(f"Error occurred, strange character found. Resetting the serial: {e}")

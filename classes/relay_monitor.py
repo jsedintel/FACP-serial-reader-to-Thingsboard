@@ -1,15 +1,15 @@
 import RPi.GPIO as GPIO
 import threading
 from typing import Dict
-from app_utils.queue_operations import SafeQueue
 from classes.enums import PublishType
 import logging
 from config.schema import ConfigSchema
+from classes.mqtt_sender import MqttHandler
 
 class RelayMonitor:
-    def __init__(self, config: ConfigSchema, queue: SafeQueue):
+    def __init__(self, config: ConfigSchema, mqtt_handler: MqttHandler):
         self.config = config
-        self.queue = queue
+        self.mqtt_handler = mqtt_handler
         self.relay_pins = self._get_relay_pins()
         self.active_states = self._get_active_states()
         self.publish_interval = config.relay_monitor.publish_interval
@@ -36,7 +36,7 @@ class RelayMonitor:
     def monitor_relays(self, shutdown_flag: threading.Event):
         while not shutdown_flag.is_set():
             telemetry = self._get_relay_states()
-            self._add_telemetry_to_queue(telemetry)
+            self._publish_telemetry(telemetry)
             
             if shutdown_flag.wait(self.publish_interval):
                 break
@@ -48,12 +48,14 @@ class RelayMonitor:
             active_state = self.active_states[status]
             is_active = gpio_state == active_state
             states[f"{status.lower()}_relay"] = is_active
-            #self.logger.debug(f"{status} relay: GPIO state = {gpio_state}, Active state = {active_state}, Is active = {is_active}")
         return states
 
-    def _add_telemetry_to_queue(self, telemetry: Dict[str, bool]):
-        #self.logger.info(f'Relay states: {telemetry}')
-        self.queue.put((PublishType.TELEMETRY, telemetry))
+    def _publish_telemetry(self, telemetry: Dict[str, bool]):
+        try:
+            self.mqtt_handler.publish_telemetry(telemetry, bypass_queue=True)
+            self.logger.debug(f'Relay states published: {telemetry}')
+        except Exception as e:
+            self.logger.error(f'Failed to publish relay states: {e}')
 
     def cleanup(self):
         try:
