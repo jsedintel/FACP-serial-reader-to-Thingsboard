@@ -107,6 +107,7 @@ class Application:
         self.logger.info("Starting application...")
         self.queue_manager.load_queue()
         self.mqtt_handler.start()
+        time.sleep(5)
         while not self.mqtt_handler.client.is_connected:
             time.sleep(1)
         self.mqtt_handler.subscribe_to_attribute("id_modelo_panel", self.on_attributes_change)

@@ -48,7 +48,6 @@ class MqttHandler:
         self.config = config
         self.queue = queue
         self.logger = logging.getLogger(__name__)
-        self.is_connected = False
         self.reconnect_interval = 5
         self.device_token = config.thingsboard.device_token
         self.tb_host = config.thingsboard.host
@@ -60,14 +59,12 @@ class MqttHandler:
     def connect(self):
         try:
             self.client.connect()
-            self.is_connected = True
-            self.logger.info("Successfully connected to ThingsBoard")
+
         except Exception as e:
             self.logger.error(f"Failed to connect to ThingsBoard: {e}")
-            self.is_connected = False
 
     def publish_telemetry(self, telemetry: Dict[str, Any], bypass_queue: bool = False):
-        if not self.is_connected:
+        if not self.client.is_connected:
             if bypass_queue:
                 self.logger.warning("Not connected to ThingsBoard. Dropping telemetry.")
                 return
@@ -120,7 +117,7 @@ class MqttHandler:
 
     def process_queue(self):
         while not self.shutdown_flag.is_set():
-            if self.is_connected:
+            if self.client.is_connected:
                 try:
                     message_type, message = self.queue.get(block=False)
                     if self.api_limits_manager.can_send():
