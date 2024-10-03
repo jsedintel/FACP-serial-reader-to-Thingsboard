@@ -53,7 +53,7 @@ class RelayMonitor:
     def _publish_telemetry(self, telemetry: Dict[str, bool]):
         try:
             self.mqtt_handler.publish_telemetry(telemetry, bypass_queue=True)
-            self.logger.debug(f'Relay states published: {telemetry}')
+            #.logger.debug(f'Relay states published: {telemetry}')
         except Exception as e:
             self.logger.error(f'Failed to publish relay states: {e}')
 
