@@ -25,3 +25,4 @@ class ConfigSchema(BaseModel):
     serial: SerialConfig
     relay: RelayConfig
     relay_monitor: RelayMonitorConfig
+    id_modelo_panel: int

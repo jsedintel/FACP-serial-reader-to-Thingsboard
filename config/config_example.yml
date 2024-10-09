@@ -1,3 +1,5 @@
+#ID del modelo del panel
+id_modelo_panel: 10001
 #Componentes respectivos a Thingsboard
 thingsboard:
   device_token: YOUR_DEVICE_TOKEN
