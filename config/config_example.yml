@@ -5,11 +5,6 @@ thingsboard:
   device_token: YOUR_DEVICE_TOKEN
   host: YOUR_THINGSBOARD_HOST
   port: YOUR_THINGSBOARD_PORT
-#Componentes respectivos a Thingsboard
-thingsboard:
-  device_token: 77nnwru7ml1zbj7165yk
-  host: mqtt.thingsboard.cloud
-  port: 1883
 #Componentes respectivos a serial
 serial:
   #Puerto correspondiente en el que se conectara el USB
