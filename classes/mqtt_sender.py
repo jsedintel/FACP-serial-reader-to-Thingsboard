@@ -141,6 +141,7 @@ class MqttHandler:
     def start(self):
         self.connect()
         self.shutdown_flag = threading.Event()
+        time.sleep(2)
         threading.Thread(target=self.process_queue, daemon=True).start()
         self.logger.info("MQTT Handler started")
 
