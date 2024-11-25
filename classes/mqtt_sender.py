@@ -52,7 +52,7 @@ class MqttHandler:
         self.device_token = config.thingsboard.device_token
         self.tb_host = config.thingsboard.host
         self.tb_port = config.thingsboard.port
-        self.client = TBDeviceMqttClient(host=self.tb_host, username=self.device_token, port=self.tb_port)
+        self.client: TBDeviceMqttClient = TBDeviceMqttClient(host=self.tb_host, username=self.device_token, port=self.tb_port)
         self.client.connect()
         self.api_limits_manager = APILimitsManager()
 
@@ -91,7 +91,7 @@ class MqttHandler:
                 self.queue.put((PublishType.TELEMETRY, telemetry))
 
     def publish_attributes(self, attributes: Dict[str, Any]):
-        if not self.is_connected:
+        if not self.client.is_connected:
             self.logger.warning("Not connected to ThingsBoard. Queueing attributes.")
             self.queue.put((PublishType.ATTRIBUTE, attributes))
             return
