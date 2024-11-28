@@ -1,7 +1,7 @@
 import logging
 from config.loader import ConfigSchema
 from classes.mqtt_sender import MqttHandler
-from classes.specific_serial_handler import Edwards_iO1000, Edwards_EST3x, Notifier_NFS320
+from classes.specific_serial_handler import Edwards_iO1000, Edwards_EST3x, Notifier_NFS, Simplex
 from app_utils.queue_operations import SafeQueue
 from components.update_app import update_check_thread
 from components.relay_controller import RelayController
@@ -32,7 +32,8 @@ class Application:
         handlers = {
             10001: Edwards_iO1000,
             10002: Edwards_EST3x,
-            10003: Notifier_NFS320
+            10003: Notifier_NFS,
+            10004: Simplex
         }
         
         handler_class = handlers.get(self.id_modelo_panel)

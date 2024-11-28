@@ -130,7 +130,7 @@ class Edwards_EST3x(SerialPortHandler):
         else:
             return False
 
-class Notifier_NFS320(SerialPortHandler):
+class Notifier_NFS(SerialPortHandler):
     def __init__(self, config: Dict[str, Any], eventSeverityLevels: Dict[str, int], queue: SafeQueue):
         super().__init__(config, eventSeverityLevels, queue)
         self.report_delimiter = "************"
