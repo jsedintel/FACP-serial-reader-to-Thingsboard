@@ -207,3 +207,93 @@ class Notifier_NFS320(SerialPortHandler):
             raise TypeError(str(e))
         except Exception as e:
             raise Exception(f"Unexpected failure occurred: {str(e)}")
+        
+class Simplex(SerialPortHandler):
+    def __init__(self, config: Dict[str, Any], eventSeverityLevels: Dict[str, int], queue: SafeQueue):
+        super().__init__(config, eventSeverityLevels, queue)
+        self.report_delimiter = "************"
+        self.max_report_delimiter_count = 2
+        self.serial_config = {
+            "baudrate": 9600,
+            "bytesize": 7,
+            "parity": "even",
+            "stopbits": 1,
+            "timeout": 1
+        }
+
+    def parse_string_event(self, event: str) -> Dict[str, Any] | None:
+        try:
+            lines = list(filter(None, event.strip().split('\n')))
+            if not lines:
+                self.logger.error(f"Invalid event received: {event}")
+                return None
+
+            primary_data: list = re.split(r'\s{3,}', lines[0])
+            if len(primary_data) == 1:
+                return {
+                "event": primary_data,
+                "description": "Panel event",
+                "severity": 1,
+                "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "FACP_date": ""  # Simplex doesn't provide a panel date
+                }
+            elif (len(primary_data) == 3 or len(primary_data == 2)):
+
+                ID_Event: str = primary_data[-2:].strip()
+                description = ' / '.join(primary_data[1]).strip()
+
+                if len(lines) > 1:
+                    description += "\n" + "\n".join(lines[1:])
+                
+                severity: int = self.default_event_severity_not_recognized
+                if "alarm" in ID_Event.lower():
+                    severity = 3
+                elif any(s in ID_Event.lower() for s in ["abnormal", "trouble"]):
+                    severity = 3
+
+                return {
+                    "event": ID_Event,
+                    "description": description,
+                    "severity": severity,
+                    "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                    "FACP_date": ""  # Simplex doesn't provide a panel date
+                }
+            else:
+                self.logger.error(f"Invalid event received: {event}")
+                return None
+
+        except Exception as e:
+            self.logger.exception(f"An error occurred while parsing the event: {event}")
+            return None
+    
+    def process_incoming_data(self, shutdown_flag: threading.Event) -> None:
+        buffer = ""
+        report_count = 0
+        add_blank_line = False
+        try:
+            while not shutdown_flag.is_set():
+                if self.ser and (self.ser.in_waiting > 0 or add_blank_line):
+                    if add_blank_line:
+                        add_blank_line = False  
+                        if_eof = self.handle_empty_line(buffer, report_count)
+                        if if_eof:
+                            buffer = ""
+                            report_count = 0
+                    else:
+                        raw_data = self.ser.readline()
+                        incoming_line = raw_data.decode('latin-1').strip()
+                        buffer, report_count = self.handle_data_line(incoming_line, buffer, report_count)
+                        add_blank_line = True 
+                else:
+                    time.sleep(0.1)
+        except (serial.SerialException, serial.SerialTimeoutException) as e:
+            raise serial.SerialException(str(e))
+        except (TypeError, UnicodeDecodeError) as e:
+            if buffer:
+                if report_count > 0:
+                    self.publish_parsed_report(buffer)
+                else:
+                    self.publish_parsed_event(buffer)
+            raise TypeError(str(e))
+        except Exception as e:
+            raise Exception(f"Unexpected failure occurred: {str(e)}")
