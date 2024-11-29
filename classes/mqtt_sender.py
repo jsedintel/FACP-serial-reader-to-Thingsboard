@@ -55,6 +55,7 @@ class MqttHandler:
         self.client: TBDeviceMqttClient = TBDeviceMqttClient(host=self.tb_host, username=self.device_token, port=self.tb_port)
         self.client.connect()
         self.api_limits_manager = APILimitsManager()
+        logging.getLogger('tb_connection').setLevel(logging.WARNING)
 
     def connect(self):
         try:

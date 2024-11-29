@@ -223,77 +223,90 @@ class Simplex(SerialPortHandler):
 
     def parse_string_event(self, event: str) -> Dict[str, Any] | None:
         try:
+            # Split on \n since process_incoming_data already converts \r to \n
             lines = list(filter(None, event.strip().split('\n')))
             if not lines:
                 self.logger.error(f"Invalid event received: {event}")
                 return None
 
-            primary_data: list = re.split(r'\s{3,}', lines[0])
-            if len(primary_data) == 1:
-                return {
-                "event": primary_data,
-                "description": "Panel event",
-                "severity": 1,
-                "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-                "FACP_date": ""  # Simplex doesn't provide a panel date
-                }
-            elif (len(primary_data) == 3 or len(primary_data == 2)):
-
-                ID_Event: str = primary_data[-2:].strip()
-                description = ' / '.join(primary_data[1]).strip()
-
-                if len(lines) > 1:
-                    description += "\n" + "\n".join(lines[1:])
+            FACP_date: str = lines[0]
+            
+            # For events with multiple spaces as separators
+            if len(lines) == 2:
+                primary_data = re.split(r'\s{3,}', lines[1])
                 
-                severity: int = self.default_event_severity_not_recognized
-                if "alarm" in ID_Event.lower():
-                    severity = 3
-                elif any(s in ID_Event.lower() for s in ["abnormal", "trouble"]):
-                    severity = 3
+                # Panel events (single message)
+                if len(primary_data) == 1:
+                    return {
+                        "event": primary_data[0],
+                        "description": "Panel event",
+                        "severity": 1,
+                        "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                        "FACP_date": FACP_date
+                    }
+                
+                # Events with location/type/status
+                elif len(primary_data) >= 2:
+                    ID_Event: str = " / ".join(primary_data[-2:]).strip()
+                    description = ''.join(primary_data[0]).strip()
 
-                return {
-                    "event": ID_Event,
-                    "description": description,
-                    "severity": severity,
-                    "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-                    "FACP_date": ""  # Simplex doesn't provide a panel date
-                }
-            else:
-                self.logger.error(f"Invalid event received: {event}")
-                return None
+                    severity: int = self.default_event_severity_not_recognized
+                    if "alarm" in ID_Event.lower():
+                        severity = 3
+                    elif any(s in ID_Event.lower() for s in ["abnormal", "trouble"]):
+                        severity = 2
+
+                    return {
+                        "event": ID_Event,
+                        "description": description,
+                        "severity": severity,
+                        "SBC_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                        "FACP_date": FACP_date
+                    }
+                
+            self.logger.error(f"Invalid event received: {event}")
+            return None
 
         except Exception as e:
             self.logger.exception(f"An error occurred while parsing the event: {event}")
             return None
     
     def process_incoming_data(self, shutdown_flag: threading.Event) -> None:
-        buffer = ""
-        report_count = 0
-        add_blank_line = False
+        if self.ser is None:
+            raise ValueError("Serial port is not initialized")
+
         try:
             while not shutdown_flag.is_set():
-                if self.ser and (self.ser.in_waiting > 0 or add_blank_line):
-                    if add_blank_line:
-                        add_blank_line = False  
-                        if_eof = self.handle_empty_line(buffer, report_count)
-                        if if_eof:
-                            buffer = ""
-                            report_count = 0
-                    else:
-                        raw_data = self.ser.readline()
-                        incoming_line = raw_data.decode('latin-1').strip()
-                        buffer, report_count = self.handle_data_line(incoming_line, buffer, report_count)
-                        add_blank_line = True 
+                if self.ser.in_waiting > 0:
+                    raw_data = self.ser.readline()
+                    data = raw_data.decode('latin-1')
+                    
+                    # Skip empty or null bytes
+                    if data.strip() == '' or data == '\x00':
+                        continue
+
+                    # Split into individual events (split on timestamp pattern)
+                    timestamp_pattern = r'(?=\s*\d{1,2}:\d{2}:\d{2} [ap]m\s+[A-Z]{3} \d{2}-[A-Z]{3}-\d{2})'
+                    events = re.split(timestamp_pattern, data)
+                    
+                    # Process each event
+                    for event in events:
+                        if event.strip():  # Skip empty events
+                            # Clean up the event
+                            event = event.strip()
+                            if event.endswith('\r\r'):
+                                event = event[:-1]  # Remove one \r to leave only one
+                            # Convert \r to \n between timestamp and message
+                            event_parts = event.split('\r', 1)
+                            if len(event_parts) == 2:
+                                cleaned_event = f"{event_parts[0].strip()}\n{event_parts[1].strip()}"
+                                self.publish_parsed_event(cleaned_event)
                 else:
                     time.sleep(0.1)
-        except (serial.SerialException, serial.SerialTimeoutException) as e:
+                    
+        except (serial.SerialException, serial.SerialTimeoutException, OSError) as e:
             raise serial.SerialException(str(e))
         except (TypeError, UnicodeDecodeError) as e:
-            if buffer:
-                if report_count > 0:
-                    self.publish_parsed_report(buffer)
-                else:
-                    self.publish_parsed_event(buffer)
             raise TypeError(str(e))
         except Exception as e:
             raise Exception(f"Unexpected failure occurred: {str(e)}")
