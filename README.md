@@ -1,4 +1,4 @@
-# Serial to MQTT Gateway for Fire Alarm Control Panels
+# FACP serial reader to Thingsboard
 
 A robust Python-based gateway service that connects Fire Alarm Control Panels (FACP) to ThingsBoard IoT platform via MQTT, enabling real-time monitoring and event tracking.
 
