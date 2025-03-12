@@ -1,4 +1,3 @@
-  GNU nano 7.2                 /etc/systemd/system/serial-to-mqtt.service
 [Unit]
 Description=Script that allows to keep reading the serial in the specified port and send it to a MQ>
 After=network.target
